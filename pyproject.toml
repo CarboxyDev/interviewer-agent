@@ -1,0 +1,86 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "interviewer-voice-agent"
+version = "0.1.0"
+description = "A consent-first AI interviewer that joins Google Meet as a guest participant"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "Proprietary" }
+authors = [{ name = "Arman" }]
+dependencies = [
+  "aiosqlite>=0.21,<1",
+  "alembic>=1.16,<2",
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "openai>=2,<3",
+  "playwright>=1.54,<2",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.10,<3",
+  "pypdf>=5.9,<7",
+  "python-docx>=1.2,<2",
+  "python-multipart>=0.0.20,<1",
+  "sqlalchemy>=2.0.41,<3",
+  "structlog>=25,<26",
+  "typer>=0.16,<1",
+  "uvicorn[standard]>=0.35,<1",
+  "websockets>=15,<17",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.17,<2",
+  "pytest>=8.4,<10",
+  "pytest-asyncio>=1.1,<2",
+  "pytest-cov>=6.2,<8",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+voice-interviewer = "voice_interviewer.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voice_interviewer"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config --cov=voice_interviewer --cov-report=term-missing --cov-fail-under=85"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["voice_interviewer"]
+omit = [
+  "src/voice_interviewer/audio.py",
+  "src/voice_interviewer/cli.py",
+  "src/voice_interviewer/doctor.py",
+  "src/voice_interviewer/meet.py",
+  "src/voice_interviewer/openai_adapters.py",
+  "src/voice_interviewer/runtime.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["A", "ASYNC", "B", "C4", "E", "F", "I", "N", "PERF", "RUF", "S", "SIM", "T20", "UP"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+packages = ["voice_interviewer"]
