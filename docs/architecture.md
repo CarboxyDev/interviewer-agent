@@ -36,6 +36,26 @@ candidate stem + bot stem -> FFmpeg mix -> interview.mp3
 The streams are isolated so the bot does not transcribe itself. The mixer begins only after
 explicit consent.
 
+## Cascade hardening
+
+Only completed STT utterances enter the LLM context. Resume and role text produce a bounded STT
+prompt and a capped keyword list, improving recognition of names and technical terms without
+changing the cascade. Completed Realtime items are correlated by `item_id` and duplicates are
+discarded.
+
+The live transcription model does not provide a dependable confidence score, so the service does
+not invent one. It uses conservative deterministic checks for empty, inaudible, or obviously
+repeated output and asks the candidate to repeat once by default. The LLM policy also treats every
+document and transcript as untrusted data and must clarify uncertainty rather than guessing.
+
+TTS playback and candidate response waiting have separate deadlines. The candidate response timer
+starts after playback completes, or immediately when a speech-start event interrupts playback.
+This preserves the full answer window even for a longer question.
+
+STT, LLM, TTS, reasoning effort, VAD, transcription delay, context limits, clarification attempts,
+and timeouts are configured through environment settings. Setting reasoning effort to `none`, STT
+context limits to `0`, or clarification attempts to `0` disables those optional behaviors.
+
 ## State machine
 
 ```text
@@ -53,4 +73,3 @@ than pretending that an interview is still active.
 The official Google Meet Media API is receive-only, so it cannot deliver interviewer audio. Version
 1 uses a normal Chromium guest participant. It clicks only `Join now`. If the page requires `Ask to
 join`, sign-in, CAPTCHA, or another security step, the adapter fails closed.
-

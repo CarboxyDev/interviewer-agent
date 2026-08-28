@@ -15,6 +15,9 @@ initiate a natural interview, and save consented outputs locally.
 - Guest Google Meet participant named `AI Interviewer`
 - Explicit streaming cascade: STT, text LLM, TTS
 - Interruption handling that stops bot speech when the candidate speaks
+- Configurable model, reasoning, VAD, latency, timeout, and clarification controls
+- Bounded resume and role terminology supplied to STT for domain-aware transcription
+- Deterministic repeat request for clearly unusable transcription output
 - Local SQLite metadata and filesystem artifacts
 - FastAPI and CLI control surfaces
 
@@ -52,9 +55,11 @@ initiate a natural interview, and save consented outputs locally.
 - The bot starts the conversation after the candidate is present.
 - No interview content is persisted before explicit consent.
 - Candidate speech interrupts bot playback within 500 ms of the speech-start event.
+- The candidate response timeout starts only after bot playback ends or is interrupted.
+- Duplicate completed STT events never become duplicate candidate utterances.
+- Clearly inaudible transcription triggers one configurable repeat request.
 - Normal responses begin within 3 seconds on a healthy network.
 - The agent never asks about protected personal characteristics.
 - A second concurrent start returns HTTP 409.
 - Admission or Google security friction causes a stable, visible failure and no bypass attempt.
 - Final artifacts are available within 15 seconds of leaving the meeting.
-

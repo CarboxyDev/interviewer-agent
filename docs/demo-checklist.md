@@ -9,6 +9,8 @@
 - [ ] Run `docker compose up -d`.
 - [ ] Run `docker compose exec interviewer voice-interviewer doctor --live`.
 - [ ] Complete one private rehearsal using two devices and no real candidate data.
+- [ ] Keep `INTERVIEWER_REASONING_EFFORT=none` for the baseline cost and latency rehearsal.
+- [ ] Repeat the same rehearsal with `low` only if comparing reasoning quality.
 
 ## Before each demo
 
@@ -35,6 +37,9 @@ docker compose exec interviewer voice-interviewer interview start \
 - [ ] Confirm no audio file exists before the candidate says yes.
 - [ ] Interrupt one bot question and confirm playback stops promptly.
 - [ ] Confirm questions refer naturally to the resume and role.
+- [ ] Say one resume-specific technical term and confirm it is transcribed correctly.
+- [ ] Create one intentionally unclear answer and confirm the bot asks for a repeat.
+- [ ] Confirm the candidate gets the full response window after a longer bot question.
 - [ ] Stop immediately if Google presents account or security friction.
 
 ## After the demo

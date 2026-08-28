@@ -1,7 +1,9 @@
 from voice_interviewer.conversation import (
+    build_transcription_hints,
     classify_consent,
     contains_protected_question,
     is_consent_withdrawal,
+    transcript_needs_clarification,
 )
 from voice_interviewer.domain import ConsentDecision
 
@@ -24,3 +26,25 @@ def test_withdrawal_and_protected_question_guards() -> None:
     assert contains_protected_question("How old are you?")
     assert contains_protected_question("Are you married?")
     assert not contains_protected_question("How did you design that API?")
+
+
+def test_transcription_hints_prioritize_repeated_role_terms_and_are_bounded() -> None:
+    hints = build_transcription_hints(
+        resume_text="Built FastAPI services with PostgreSQL and Kafka.",
+        job_description_text="FastAPI backend using Kafka, Docker, and PostgreSQL.",
+        max_chars=80,
+        keyword_limit=4,
+    )
+
+    assert set(hints.keywords[:3]) == {"FastAPI", "PostgreSQL", "Kafka"}
+    assert len(hints.keywords) == 4
+    assert "English backend job interview" in hints.prompt
+    assert len(hints.prompt) <= 220
+
+
+def test_unclear_transcript_detection_is_conservative() -> None:
+    assert transcript_needs_clarification("")
+    assert transcript_needs_clarification("[inaudible]")
+    assert transcript_needs_clarification("the the the the")
+    assert not transcript_needs_clarification("Yes")
+    assert not transcript_needs_clarification("I used Kafka for event delivery.")

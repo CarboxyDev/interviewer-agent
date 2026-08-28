@@ -31,12 +31,22 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-5.6-luna"
     tts_model: str = "gpt-4o-mini-tts"
     tts_voice: str = "marin"
-    reasoning_effort: Literal["none", "low", "medium", "high"] = "none"
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "none"
+
+    stt_language: str = Field(default="en", min_length=2, max_length=16)
+    stt_delay: Literal["minimal", "low", "medium", "high", "xhigh"] = "low"
+    stt_vad_threshold: float = Field(default=0.5, gt=0, lt=1)
+    stt_prefix_padding_ms: int = Field(default=300, ge=0, le=2_000)
+    stt_silence_duration_ms: int = Field(default=500, ge=100, le=5_000)
+    stt_context_max_chars: int = Field(default=3_000, ge=0, le=10_000)
+    stt_keyword_limit: int = Field(default=40, ge=0, le=100)
+    transcript_clarification_attempts: int = Field(default=1, ge=0, le=3)
 
     headless: bool = False
     participant_timeout_seconds: int = Field(default=300, ge=30, le=900)
     consent_timeout_seconds: int = Field(default=120, ge=30, le=300)
     response_timeout_seconds: int = Field(default=20, ge=5, le=60)
+    tts_timeout_seconds: int = Field(default=45, ge=5, le=120)
     maximum_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
 
     @property

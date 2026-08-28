@@ -39,6 +39,38 @@ curl -X POST http://localhost:8000/v1/interviews \
 The host must join first and set meeting access to `Open`. Do not admit the bot through an
 `Ask to join` flow. See [docs/demo-checklist.md](docs/demo-checklist.md).
 
+## Models and configuration
+
+All provider and pipeline choices are environment settings. The default combination prioritizes a
+low-cost, responsive demo:
+
+| Stage | Default | Main controls |
+| --- | --- | --- |
+| STT | `gpt-live-transcribe` | language, transcription delay, VAD, context, keywords |
+| LLM | `gpt-5.6-luna` | model and reasoning effort |
+| TTS | `gpt-4o-mini-tts`, voice `marin` | model, voice, playback timeout |
+
+Set `INTERVIEWER_REASONING_EFFORT=none` to avoid extra reasoning effort. For experiments, the
+default LLM also accepts `low`, `medium`, `high`, `xhigh`, and `max`. Higher effort can improve
+deliberation, but usually adds latency and cost. Start with `none`, then compare `low` or `medium`
+using the same scripted rehearsal.
+
+The main speech controls are:
+
+- `INTERVIEWER_STT_DELAY`: `minimal`, `low`, `medium`, `high`, or `xhigh`
+- `INTERVIEWER_STT_VAD_THRESHOLD`: speech detection sensitivity from greater than 0 to less than 1
+- `INTERVIEWER_STT_PREFIX_PADDING_MS`: audio retained before detected speech
+- `INTERVIEWER_STT_SILENCE_DURATION_MS`: silence required to finish a turn
+- `INTERVIEWER_STT_CONTEXT_MAX_CHARS`: bounded resume and role context sent to STT, or `0` to disable
+- `INTERVIEWER_STT_KEYWORD_LIMIT`: expected terminology sent to STT, or `0` to disable
+- `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
+- `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
+- `INTERVIEWER_TTS_TIMEOUT_SECONDS`: independent maximum bot playback time
+
+See `.env.example` for the complete configuration. Model capabilities can change, so verify the
+selected values against the official [model catalog](https://developers.openai.com/api/docs/models)
+before replacing a default.
+
 ## Local development
 
 ```bash

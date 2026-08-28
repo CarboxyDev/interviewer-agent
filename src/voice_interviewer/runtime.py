@@ -71,6 +71,11 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
             stt=OpenAIRealtimeTranscriber(
                 configured.openai_api_key,
                 model=configured.stt_model,
+                language=configured.stt_language,
+                delay=configured.stt_delay,
+                vad_threshold=configured.stt_vad_threshold,
+                prefix_padding_ms=configured.stt_prefix_padding_ms,
+                silence_duration_ms=configured.stt_silence_duration_ms,
             ),
             interviewer=OpenAIInterviewer(
                 client,
@@ -85,6 +90,10 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
             participant_timeout_seconds=configured.participant_timeout_seconds,
             consent_timeout_seconds=configured.consent_timeout_seconds,
             response_timeout_seconds=configured.response_timeout_seconds,
+            tts_timeout_seconds=configured.tts_timeout_seconds,
+            stt_context_max_chars=configured.stt_context_max_chars,
+            stt_keyword_limit=configured.stt_keyword_limit,
+            transcript_clarification_attempts=configured.transcript_clarification_attempts,
         )
     else:
         runner = UnconfiguredRunner(repository)

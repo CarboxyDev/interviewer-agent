@@ -10,6 +10,7 @@ from voice_interviewer.domain import (
     Session,
     SessionState,
     SpeechEvent,
+    TranscriptionHints,
     Utterance,
 )
 
@@ -76,7 +77,12 @@ class MeetTransport(Protocol):
 
 
 class SpeechToText(Protocol):
-    def transcribe(self, audio: AsyncIterator[bytes]) -> AsyncIterator[SpeechEvent]: ...
+    def transcribe(
+        self,
+        audio: AsyncIterator[bytes],
+        *,
+        hints: TranscriptionHints | None = None,
+    ) -> AsyncIterator[SpeechEvent]: ...
 
 
 class Interviewer(Protocol):

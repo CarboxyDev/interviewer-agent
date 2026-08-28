@@ -9,6 +9,7 @@ from voice_interviewer.domain import (
     NextTurn,
     SessionState,
     SpeechEvent,
+    TranscriptionHints,
     Utterance,
 )
 from voice_interviewer.persistence import SqlAlchemySessionRepository
@@ -79,8 +80,15 @@ class FakeAudio:
 class FakeSTT:
     def __init__(self, events: Sequence[SpeechEvent]) -> None:
         self.events = events
+        self.hints: TranscriptionHints | None = None
 
-    async def transcribe(self, audio: AsyncIterator[bytes]) -> AsyncIterator[SpeechEvent]:
+    async def transcribe(
+        self,
+        audio: AsyncIterator[bytes],
+        *,
+        hints: TranscriptionHints | None = None,
+    ) -> AsyncIterator[SpeechEvent]:
+        self.hints = hints
         for event in self.events:
             yield event
             await asyncio.sleep(0)

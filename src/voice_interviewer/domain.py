@@ -154,6 +154,13 @@ class Utterance:
 class SpeechEvent:
     kind: SpeechEventKind
     text: str = ""
+    item_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptionHints:
+    prompt: str = ""
+    keywords: tuple[str, ...] = ()
 
 
 class NextTurn(BaseModel):
