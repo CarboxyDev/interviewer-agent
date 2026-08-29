@@ -60,7 +60,7 @@ low-cost, responsive demo:
 
 | Stage | Default | Main controls |
 | --- | --- | --- |
-| STT | `gpt-live-transcribe` | language, transcription delay, VAD, context, keywords |
+| STT | `gpt-transcribe` | language, server VAD, context, keywords |
 | LLM | `gpt-5.6-luna` | model and reasoning effort |
 | TTS | `gpt-4o-mini-tts`, voice `marin` | model, voice, playback timeout |
 
@@ -71,7 +71,7 @@ using the same scripted rehearsal.
 
 The main speech controls are:
 
-- `INTERVIEWER_STT_DELAY`: `minimal`, `low`, `medium`, `high`, or `xhigh`
+- `INTERVIEWER_STT_DELAY`: optional latency control for STT models that support it
 - `INTERVIEWER_STT_VAD_THRESHOLD`: speech detection sensitivity from greater than 0 to less than 1
 - `INTERVIEWER_STT_PREFIX_PADDING_MS`: audio retained before detected speech
 - `INTERVIEWER_STT_SILENCE_DURATION_MS`: silence required to finish a turn
@@ -84,6 +84,10 @@ The main speech controls are:
 See `.env.example` for the complete configuration. Model capabilities can change, so verify the
 selected values against the official [model catalog](https://developers.openai.com/api/docs/models)
 before replacing a default.
+
+The default uses `gpt-transcribe` because the interview loop depends on server-side speech start
+and silence detection. Streaming-only models such as `gpt-live-transcribe` need a separate local
+turn detector and are not drop-in replacements for this runtime.
 
 ## Local development
 

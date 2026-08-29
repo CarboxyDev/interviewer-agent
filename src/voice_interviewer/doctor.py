@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 
 from voice_interviewer.config import Settings
 from voice_interviewer.meet import PlaywrightMeetTransport
+from voice_interviewer.openai_adapters import OpenAIRealtimeTranscriber
 
 
 async def run_checks(settings: Settings, *, live: bool = False) -> dict[str, object]:
@@ -24,6 +25,7 @@ async def run_checks(settings: Settings, *, live: bool = False) -> dict[str, obj
     checks["audio_devices"] = await _audio_devices_available()
     if live and settings.openai_api_key:
         checks["openai_models"] = await _models_available(settings)
+        checks["openai_realtime_transcription"] = await _realtime_transcription_available(settings)
     return checks
 
 
@@ -102,3 +104,22 @@ async def _models_available(settings: Settings) -> bool:
         return False
     finally:
         await client.close()
+
+
+async def _realtime_transcription_available(settings: Settings) -> bool:
+    if settings.openai_api_key is None:
+        return False
+    transcriber = OpenAIRealtimeTranscriber(
+        settings.openai_api_key,
+        model=settings.stt_model,
+        language=settings.stt_language,
+        delay=settings.stt_delay,
+        vad_threshold=settings.stt_vad_threshold,
+        prefix_padding_ms=settings.stt_prefix_padding_ms,
+        silence_duration_ms=settings.stt_silence_duration_ms,
+    )
+    try:
+        await transcriber.probe()
+        return True
+    except Exception:
+        return False

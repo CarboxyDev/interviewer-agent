@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from voice_interviewer.domain import SessionCreate
+from voice_interviewer.domain import InterviewNotes, NextTurn, SessionCreate
 
 
 def test_meet_url_is_validated_and_canonicalized() -> None:
@@ -29,3 +29,11 @@ def test_invalid_or_unauthorized_meet_is_rejected(url: str, authorized: bool) ->
             duration_minutes=15,
             meeting_authorization_confirmed=authorized,
         )
+
+
+@pytest.mark.parametrize("model", [NextTurn, InterviewNotes])
+def test_openai_output_schemas_are_strict(model: type[NextTurn] | type[InterviewNotes]) -> None:
+    schema = model.model_json_schema()
+
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == set(schema["properties"])

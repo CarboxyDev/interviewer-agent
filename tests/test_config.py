@@ -33,6 +33,10 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
     assert settings.browser_executable_path == Path("/opt/browser/chrome")
 
 
+def test_default_stt_model_supports_server_side_turn_detection() -> None:
+    assert Settings(_env_file=None).stt_model == "gpt-transcribe"
+
+
 def test_invalid_vad_threshold_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, stt_vad_threshold=1.5)

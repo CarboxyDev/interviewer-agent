@@ -164,17 +164,21 @@ class TranscriptionHints:
 
 
 class NextTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     say: str = Field(min_length=1, max_length=800)
     rationale: str = Field(min_length=1, max_length=500)
     topic: str = Field(min_length=1, max_length=100)
-    should_end: bool = False
+    should_end: bool
 
 
 class InterviewNotes(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     summary: str = Field(min_length=1, max_length=2000)
-    strengths_observed: list[str] = Field(default_factory=list, max_length=8)
-    areas_to_probe: list[str] = Field(default_factory=list, max_length=8)
-    evidence: list[str] = Field(default_factory=list, max_length=12)
+    strengths_observed: list[str] = Field(max_length=8)
+    areas_to_probe: list[str] = Field(max_length=8)
+    evidence: list[str] = Field(max_length=12)
 
 
 class SessionView(BaseModel):

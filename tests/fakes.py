@@ -117,6 +117,7 @@ class FakeInterviewer:
                 say="Tell me about an API you designed.",
                 rationale="Gather relevant evidence.",
                 topic="API design",
+                should_end=False,
             )
         return NextTurn(
             say="Thank you. That concludes the interview.",
@@ -129,6 +130,7 @@ class FakeInterviewer:
         return InterviewNotes(
             summary="The candidate discussed API design.",
             strengths_observed=["Explained a concrete API"],
+            areas_to_probe=[],
             evidence=["Candidate described an API they designed"],
         )
 

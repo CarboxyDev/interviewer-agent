@@ -3,10 +3,10 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 from collections.abc import AsyncIterator, Sequence
 from contextlib import suppress
 from typing import Any, cast
-from urllib.parse import quote
 
 import websockets
 from openai import AsyncOpenAI, OpenAIError
@@ -22,6 +22,9 @@ from voice_interviewer.domain import (
     Utterance,
 )
 from voice_interviewer.errors import InterviewerError
+
+REALTIME_TRANSCRIPTION_URL = "wss://api.openai.com/v1/realtime?intent=transcription"
+REALTIME_HANDSHAKE_TIMEOUT_SECONDS = 10
 
 INTERVIEWER_POLICY = """You are a professional AI interviewer conducting an English interview.
 Ask exactly one concise question at a time. Adapt questions to the candidate's resume, the job
@@ -195,41 +198,14 @@ class OpenAIRealtimeTranscriber:
         *,
         hints: TranscriptionHints | None = None,
     ) -> AsyncIterator[SpeechEvent]:
-        url = f"wss://api.openai.com/v1/realtime?model={quote(self.model)}"
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        transcription: dict[str, Any] = {
-            "model": self.model,
-            "languages": [self.language],
-            "delay": self.delay,
-        }
-        if hints and hints.prompt:
-            transcription["prompt"] = hints.prompt
-        if hints and hints.keywords:
-            transcription["keywords"] = list(hints.keywords)
         try:
-            async with websockets.connect(url, additional_headers=headers) as socket:
-                await socket.send(
-                    json.dumps(
-                        {
-                            "type": "session.update",
-                            "session": {
-                                "type": "transcription",
-                                "audio": {
-                                    "input": {
-                                        "format": {"type": "audio/pcm", "rate": 24_000},
-                                        "transcription": transcription,
-                                        "turn_detection": {
-                                            "type": "server_vad",
-                                            "threshold": self.vad_threshold,
-                                            "prefix_padding_ms": self.prefix_padding_ms,
-                                            "silence_duration_ms": self.silence_duration_ms,
-                                        },
-                                    },
-                                },
-                            },
-                        }
-                    )
-                )
+            async with websockets.connect(
+                REALTIME_TRANSCRIPTION_URL,
+                additional_headers=headers,
+                open_timeout=REALTIME_HANDSHAKE_TIMEOUT_SECONDS,
+            ) as socket:
+                await self._configure_session(socket, hints)
                 producer = asyncio.create_task(self._send_audio(socket, audio))
                 completed_item_ids: set[str] = set()
                 try:
@@ -255,6 +231,60 @@ class OpenAIRealtimeTranscriber:
             raise
         except Exception as exc:
             raise _provider_error("realtime transcription", exc) from exc
+
+    async def probe(self) -> None:
+        """Verify Realtime transcription access and configuration without sending audio."""
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            async with websockets.connect(
+                REALTIME_TRANSCRIPTION_URL,
+                additional_headers=headers,
+                open_timeout=REALTIME_HANDSHAKE_TIMEOUT_SECONDS,
+            ) as socket:
+                await self._configure_session(socket, None)
+        except InterviewerError:
+            raise
+        except Exception as exc:
+            raise _provider_error("realtime transcription probe", exc) from exc
+
+    async def _configure_session(
+        self,
+        socket: Any,
+        hints: TranscriptionHints | None,
+    ) -> None:
+        await _wait_for_realtime_event(socket, "session.created")
+        await socket.send(json.dumps(self._session_update(hints)))
+        await _wait_for_realtime_event(socket, "session.updated")
+
+    def _session_update(self, hints: TranscriptionHints | None) -> dict[str, Any]:
+        transcription: dict[str, Any] = {
+            "model": self.model,
+            "languages": [self.language],
+        }
+        if self.model in {"gpt-live-transcribe", "gpt-realtime-whisper"}:
+            transcription["delay"] = self.delay
+        if hints and hints.prompt:
+            transcription["prompt"] = hints.prompt
+        if hints and hints.keywords:
+            transcription["keywords"] = list(hints.keywords)
+        return {
+            "type": "session.update",
+            "session": {
+                "type": "transcription",
+                "audio": {
+                    "input": {
+                        "format": {"type": "audio/pcm", "rate": 24_000},
+                        "transcription": transcription,
+                        "turn_detection": {
+                            "type": "server_vad",
+                            "threshold": self.vad_threshold,
+                            "prefix_padding_ms": self.prefix_padding_ms,
+                            "silence_duration_ms": self.silence_duration_ms,
+                        },
+                    },
+                },
+            },
+        }
 
     @staticmethod
     async def _send_audio(socket: Any, audio: AsyncIterator[bytes]) -> None:
@@ -290,8 +320,26 @@ def _speech_event_from_realtime_event(
     return SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, transcript, item_id)
 
 
+async def _wait_for_realtime_event(socket: Any, expected_type: str) -> dict[str, Any]:
+    while True:
+        raw = await asyncio.wait_for(
+            socket.recv(),
+            timeout=REALTIME_HANDSHAKE_TIMEOUT_SECONDS,
+        )
+        event = cast(dict[str, Any], json.loads(raw))
+        if event.get("type") == "error":
+            message = event.get("error", {}).get("message", "Unknown Realtime API error")
+            raise RuntimeError(message)
+        if event.get("type") == expected_type:
+            return event
+
+
 def _provider_error(operation: str, exc: Exception) -> InterviewerError:
+    detail = " ".join(str(exc).split())
+    detail = re.sub(r"(?i)Bearer\s+\S+", "Bearer [redacted]", detail)
+    detail = re.sub(r"sk-[A-Za-z0-9_-]+", "[redacted]", detail)
+    suffix = f": {detail[:300]}" if detail else ""
     return InterviewerError(
         FailureCode.OPENAI_UNAVAILABLE,
-        f"OpenAI {operation} failed ({type(exc).__name__})",
+        f"OpenAI {operation} failed ({type(exc).__name__}){suffix}",
     )
