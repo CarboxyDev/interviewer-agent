@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     stt_model: str = "gpt-transcribe"
     llm_model: str = "gpt-5.6-luna"
     tts_model: str = "gpt-4o-mini-tts"
-    tts_voice: str = "marin"
+    tts_voice: str = "cedar"
     reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "none"
 
     stt_language: str = Field(default="en", min_length=2, max_length=16)

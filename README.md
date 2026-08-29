@@ -65,7 +65,7 @@ low-cost, responsive demo:
 | --- | --- | --- |
 | STT | `gpt-transcribe` | language, server VAD, context, keywords |
 | LLM | `gpt-5.6-luna` | model and reasoning effort |
-| TTS | `gpt-4o-mini-tts`, voice `marin` | model, voice, playback timeout |
+| TTS | `gpt-4o-mini-tts`, voice `cedar` | model, voice, playback timeout |
 
 Set `INTERVIEWER_REASONING_EFFORT=none` to avoid extra reasoning effort. For experiments, the
 default LLM also accepts `low`, `medium`, `high`, `xhigh`, and `max`. Higher effort can improve

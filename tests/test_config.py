@@ -10,6 +10,7 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
     settings = Settings(
         _env_file=None,
         reasoning_effort="max",
+        tts_voice="onyx",
         stt_delay="minimal",
         stt_vad_threshold=0.65,
         stt_context_max_chars=0,
@@ -24,6 +25,7 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
     )
 
     assert settings.reasoning_effort == "max"
+    assert settings.tts_voice == "onyx"
     assert settings.stt_delay == "minimal"
     assert settings.stt_vad_threshold == 0.65
     assert settings.stt_context_max_chars == 0
@@ -38,7 +40,10 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
 
 
 def test_default_stt_model_supports_server_side_turn_detection() -> None:
-    assert Settings(_env_file=None).stt_model == "gpt-transcribe"
+    settings = Settings(_env_file=None)
+
+    assert settings.stt_model == "gpt-transcribe"
+    assert settings.tts_voice == "cedar"
 
 
 def test_invalid_vad_threshold_is_rejected() -> None:
