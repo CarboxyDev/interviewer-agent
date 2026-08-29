@@ -210,7 +210,8 @@ class ConversationRunner:
             code = FailureCode.CONSENT_TIMEOUT if not consented else FailureCode.INTERNAL_ERROR
             await self.repository.fail(session_id, code, str(exc))
         except Exception as exc:
-            await self.repository.fail(session_id, FailureCode.INTERNAL_ERROR, str(exc)[:500])
+            detail = f"{type(exc).__name__}: {exc}"[:500]
+            await self.repository.fail(session_id, FailureCode.INTERNAL_ERROR, detail)
         finally:
             if speech_events is not None:
                 with suppress(Exception):

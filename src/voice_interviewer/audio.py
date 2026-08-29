@@ -57,22 +57,28 @@ class PulseAudioRouter:
             async for chunk in audio:
                 if process.returncode is not None:
                     break
-                process.stdin.write(chunk)
-                await process.stdin.drain()
-            if process.stdin.can_write_eof():
-                process.stdin.write_eof()
+                try:
+                    process.stdin.write(chunk)
+                    await process.stdin.drain()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+            if process.returncode is None and process.stdin.can_write_eof():
+                with suppress(BrokenPipeError, ConnectionResetError):
+                    process.stdin.write_eof()
             await process.wait()
             error = await self._read_error(process)
-            if process.returncode and error:
-                raise InterviewerError(FailureCode.AUDIO_DEVICE_FAILURE, error)
+            if process.returncode and self._playback is process:
+                detail = error or f"pacat exited with code {process.returncode}"
+                raise InterviewerError(FailureCode.AUDIO_DEVICE_FAILURE, detail)
         finally:
             if self._playback is process:
                 self._playback = None
 
     async def stop_bot_audio(self) -> None:
-        if self._playback is not None:
-            await self._terminate(self._playback)
-            self._playback = None
+        process = self._playback
+        self._playback = None
+        if process is not None:
+            await self._terminate(process)
 
     async def start_recording(self, session_dir: Path) -> None:
         await asyncio.to_thread(session_dir.mkdir, parents=True, exist_ok=True)
