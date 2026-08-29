@@ -19,7 +19,7 @@
 - [ ] Set meeting access to `Open`.
 - [ ] Join the meeting as host before starting the bot.
 - [ ] Use synthetic or authorized resume and job description files.
-- [ ] Confirm the meeting owner authorized an automated guest participant.
+- [ ] Confirm the meeting owner authorized the automated interviewer participant.
 - [ ] Keep a manual stop command ready.
 - [ ] Close unrelated tabs and silence local notifications.
 
@@ -33,7 +33,7 @@ docker compose exec interviewer voice-interviewer interview start \
   --authorized
 ```
 
-- [ ] Confirm the guest appears as `AI Interviewer` without an admission request.
+- [ ] Confirm the expected guest or dedicated account appears without an admission request.
 - [ ] If the guest is denied before the name screen, stop and do not retry for at least five minutes.
 - [ ] Do not delete `data/meet-attempts.json` or restart Docker to bypass the join limits.
 - [ ] Confirm it starts with disclosure and a consent question.

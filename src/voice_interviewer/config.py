@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     participant_timeout_seconds: int = Field(default=300, ge=30, le=900)
     consent_timeout_seconds: int = Field(default=120, ge=30, le=300)
     response_timeout_seconds: int = Field(default=20, ge=5, le=60)
+    candidate_turn_timeout_seconds: int = Field(default=120, ge=30, le=300)
     tts_timeout_seconds: int = Field(default=45, ge=5, le=120)
     maximum_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
 

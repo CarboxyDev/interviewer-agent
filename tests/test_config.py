@@ -14,6 +14,7 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
         stt_vad_threshold=0.65,
         stt_context_max_chars=0,
         transcript_clarification_attempts=0,
+        candidate_turn_timeout_seconds=180,
         browser_profile_dir="custom/profile",
         browser_connection_mode="playwright",
         browser_cdp_port=9333,
@@ -26,6 +27,7 @@ def test_model_and_pipeline_controls_are_configurable() -> None:
     assert settings.stt_vad_threshold == 0.65
     assert settings.stt_context_max_chars == 0
     assert settings.transcript_clarification_attempts == 0
+    assert settings.candidate_turn_timeout_seconds == 180
     assert settings.browser_profile_dir == Path("custom/profile")
     assert settings.browser_connection_mode == "playwright"
     assert settings.browser_cdp_port == 9333

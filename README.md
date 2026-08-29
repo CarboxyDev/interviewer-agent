@@ -7,7 +7,9 @@ session metadata, and evidence-based notes.
 ## Safety contract
 
 - The bot joins only a meeting supplied by an authorized host.
-- It uses a guest identity named `AI Interviewer`. It never signs into Google.
+- It uses either an anonymous `AI Interviewer` guest or a dedicated Google profile signed in
+  manually by the operator.
+- It never automates Google credentials, MFA, CAPTCHA, cookies, or account recovery.
 - It does not bypass admission, CAPTCHA, account, or security checks.
 - It persists recent join attempts and limits the browser profile to three attempts per hour.
 - It records only after the candidate explicitly consents in the meeting.
@@ -36,8 +38,9 @@ docker compose exec interviewer voice-interviewer browser setup
 ```
 
 Open `http://127.0.0.1:6080/vnc.html?autoconnect=1`, sign in manually, then stop the setup command
-with `Ctrl+C`. Rename the spare account to `AI Interviewer` before the demo. Never copy a personal
-Chrome profile, inject cookies, or automate password, MFA, CAPTCHA, or Google security prompts.
+with `Ctrl+C`. You may name the dedicated account `AI Interviewer`, but this is optional. Never
+copy a personal Chrome profile, inject cookies, or automate password, MFA, CAPTCHA, or Google
+security prompts.
 
 Create an interview:
 
@@ -79,6 +82,7 @@ The main speech controls are:
 - `INTERVIEWER_STT_KEYWORD_LIMIT`: expected terminology sent to STT, or `0` to disable
 - `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
 - `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
+- `INTERVIEWER_CANDIDATE_TURN_TIMEOUT_SECONDS`: maximum active answer duration after speech starts
 - `INTERVIEWER_TTS_TIMEOUT_SECONDS`: independent maximum bot playback time
 
 See `.env.example` for the complete configuration. Model capabilities can change, so verify the

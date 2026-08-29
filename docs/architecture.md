@@ -52,9 +52,10 @@ TTS playback and candidate response waiting have separate deadlines. The candida
 starts after playback completes, or immediately when a speech-start event interrupts playback.
 This preserves the full answer window even for a longer question.
 
-STT, LLM, TTS, reasoning effort, VAD, transcription delay, context limits, clarification attempts,
-and timeouts are configured through environment settings. Setting reasoning effort to `none`, STT
-context limits to `0`, or clarification attempts to `0` disables those optional behaviors.
+STT, LLM, TTS, reasoning effort, VAD, supported transcription controls, context limits,
+clarification attempts, and timeouts are configured through environment settings. Setting
+reasoning effort to `none`, STT context limits to `0`, or clarification attempts to `0` disables
+those optional behaviors.
 
 ## State machine
 
@@ -71,5 +72,6 @@ than pretending that an interview is still active.
 ## Meet boundary
 
 The official Google Meet Media API is receive-only, so it cannot deliver interviewer audio. Version
-1 uses a normal Chromium guest participant. It clicks only `Join now`. If the page requires `Ask to
-join`, sign-in, CAPTCHA, or another security step, the adapter fails closed.
+1 uses a normal Chromium participant, either anonymous or backed by a dedicated profile that the
+operator signed into manually. It clicks only `Join now` or `Rejoin`. If the page requires `Ask to
+join`, CAPTCHA, account recovery, or another security step, the adapter fails closed.

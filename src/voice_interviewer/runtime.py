@@ -98,6 +98,7 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
             participant_timeout_seconds=configured.participant_timeout_seconds,
             consent_timeout_seconds=configured.consent_timeout_seconds,
             response_timeout_seconds=configured.response_timeout_seconds,
+            candidate_turn_timeout_seconds=configured.candidate_turn_timeout_seconds,
             tts_timeout_seconds=configured.tts_timeout_seconds,
             stt_context_max_chars=configured.stt_context_max_chars,
             stt_keyword_limit=configured.stt_keyword_limit,

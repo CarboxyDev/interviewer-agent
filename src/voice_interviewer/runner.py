@@ -49,6 +49,7 @@ class ConversationRunner:
         participant_timeout_seconds: int,
         consent_timeout_seconds: int,
         response_timeout_seconds: int,
+        candidate_turn_timeout_seconds: int,
         tts_timeout_seconds: int,
         stt_context_max_chars: int,
         stt_keyword_limit: int,
@@ -64,6 +65,7 @@ class ConversationRunner:
         self.participant_timeout_seconds = participant_timeout_seconds
         self.consent_timeout_seconds = consent_timeout_seconds
         self.response_timeout_seconds = response_timeout_seconds
+        self.candidate_turn_timeout_seconds = candidate_turn_timeout_seconds
         self.tts_timeout_seconds = tts_timeout_seconds
         self.stt_context_max_chars = stt_context_max_chars
         self.stt_keyword_limit = stt_keyword_limit
@@ -299,7 +301,7 @@ class ConversationRunner:
                     if event.kind is SpeechEventKind.SPEECH_STARTED:
                         if not playback.done():
                             await self._stop_playback(playback)
-                        response_deadline = time.monotonic() + timeout_seconds
+                        response_deadline = time.monotonic() + self.candidate_turn_timeout_seconds
                     elif event.kind is SpeechEventKind.FINAL_TRANSCRIPT:
                         if not playback.done():
                             await self._stop_playback(playback)
