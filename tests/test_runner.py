@@ -62,6 +62,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
         candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=500,
         stt_keyword_limit=20,
@@ -99,6 +100,7 @@ async def test_runner_deletes_content_when_consent_declined(tmp_path: Path) -> N
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
         candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=500,
         stt_keyword_limit=20,
@@ -132,6 +134,7 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
         candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=500,
         stt_keyword_limit=20,
@@ -169,6 +172,7 @@ async def test_runner_retries_an_unclear_transcript_and_passes_stt_hints(tmp_pat
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
         candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=500,
         stt_keyword_limit=20,
@@ -215,6 +219,7 @@ async def test_response_timeout_starts_after_playback_finishes(tmp_path: Path) -
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
         candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=0,
         stt_keyword_limit=0,
@@ -252,6 +257,7 @@ async def test_active_candidate_speech_uses_longer_turn_timeout(tmp_path: Path) 
         consent_timeout_seconds=1,
         response_timeout_seconds=0.05,
         candidate_turn_timeout_seconds=0.3,
+        candidate_turn_grace_seconds=0,
         tts_timeout_seconds=1,
         stt_context_max_chars=0,
         stt_keyword_limit=0,
@@ -265,4 +271,95 @@ async def test_active_candidate_speech_uses_longer_turn_timeout(tmp_path: Path) 
     )
 
     assert response == "A complete long answer"
+    await repository.close()
+
+
+async def test_adjacent_stt_segments_are_combined_into_one_answer(tmp_path: Path) -> None:
+    _session, repository, artifacts = await prepare(tmp_path)
+
+    async def segmented_answer() -> AsyncIterator[SpeechEvent]:
+        await asyncio.sleep(0.02)
+        yield SpeechEvent(SpeechEventKind.SPEECH_STARTED)
+        await asyncio.sleep(0.01)
+        yield SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "First sentence.")
+        await asyncio.sleep(0.02)
+        yield SpeechEvent(SpeechEventKind.SPEECH_STARTED)
+        await asyncio.sleep(0.01)
+        yield SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Second sentence.")
+        await asyncio.sleep(0.2)
+
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(),
+        audio=FakeAudio(),
+        stt=FakeSTT([]),
+        interviewer=FakeInterviewer(),
+        tts=FakeTTS(),
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=0.1,
+        candidate_turn_timeout_seconds=0.5,
+        candidate_turn_grace_seconds=0.05,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=0,
+        stt_keyword_limit=0,
+        transcript_clarification_attempts=0,
+    )
+
+    response = await runner._say_and_receive(
+        "Tell me about your work.",
+        segmented_answer(),
+        timeout_seconds=0.1,
+    )
+
+    assert response == "First sentence. Second sentence."
+    await repository.close()
+
+
+async def test_older_final_event_does_not_close_newer_active_segment(tmp_path: Path) -> None:
+    _session, repository, artifacts = await prepare(tmp_path)
+
+    async def reordered_events() -> AsyncIterator[SpeechEvent]:
+        yield SpeechEvent(SpeechEventKind.SPEECH_STARTED, item_id="item-1")
+        yield SpeechEvent(SpeechEventKind.SPEECH_STARTED, item_id="item-2")
+        yield SpeechEvent(
+            SpeechEventKind.FINAL_TRANSCRIPT,
+            "First sentence.",
+            item_id="item-1",
+        )
+        await asyncio.sleep(0.08)
+        yield SpeechEvent(
+            SpeechEventKind.FINAL_TRANSCRIPT,
+            "Second sentence.",
+            item_id="item-2",
+        )
+        await asyncio.sleep(0.2)
+
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(),
+        audio=FakeAudio(),
+        stt=FakeSTT([]),
+        interviewer=FakeInterviewer(),
+        tts=FakeTTS(),
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=0.1,
+        candidate_turn_timeout_seconds=0.5,
+        candidate_turn_grace_seconds=0.05,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=0,
+        stt_keyword_limit=0,
+        transcript_clarification_attempts=0,
+    )
+
+    response = await runner._say_and_receive(
+        "Tell me about your work.",
+        reordered_events(),
+        timeout_seconds=0.1,
+    )
+
+    assert response == "First sentence. Second sentence."
     await repository.close()

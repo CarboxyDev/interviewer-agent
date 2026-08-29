@@ -83,6 +83,7 @@ The main speech controls are:
 - `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
 - `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
 - `INTERVIEWER_CANDIDATE_TURN_TIMEOUT_SECONDS`: maximum active answer duration after speech starts
+- `INTERVIEWER_CANDIDATE_TURN_GRACE_SECONDS`: pause allowed between answer segments
 - `INTERVIEWER_TTS_TIMEOUT_SECONDS`: independent maximum bot playback time
 
 See `.env.example` for the complete configuration. Model capabilities can change, so verify the

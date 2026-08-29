@@ -50,6 +50,7 @@ class ConversationRunner:
         consent_timeout_seconds: int,
         response_timeout_seconds: int,
         candidate_turn_timeout_seconds: int,
+        candidate_turn_grace_seconds: float,
         tts_timeout_seconds: int,
         stt_context_max_chars: int,
         stt_keyword_limit: int,
@@ -66,6 +67,7 @@ class ConversationRunner:
         self.consent_timeout_seconds = consent_timeout_seconds
         self.response_timeout_seconds = response_timeout_seconds
         self.candidate_turn_timeout_seconds = candidate_turn_timeout_seconds
+        self.candidate_turn_grace_seconds = candidate_turn_grace_seconds
         self.tts_timeout_seconds = tts_timeout_seconds
         self.stt_context_max_chars = stt_context_max_chars
         self.stt_keyword_limit = stt_keyword_limit
@@ -269,11 +271,16 @@ class ConversationRunner:
         event_task: asyncio.Task[SpeechEvent] | None = None
         playback_deadline = time.monotonic() + self.tts_timeout_seconds
         response_deadline: float | None = None
+        completion_deadline: float | None = None
+        transcript_fragments: list[str] = []
+        speech_active = False
+        active_item_id: str | None = None
         try:
             while True:
                 self._raise_if_stopped()
                 if playback.done() and response_deadline is None:
-                    playback.result()
+                    if not playback.cancelled():
+                        playback.result()
                     response_deadline = time.monotonic() + timeout_seconds
                 if event_task is None:
                     event_task = asyncio.create_task(_next_event(events))
@@ -281,8 +288,12 @@ class ConversationRunner:
                 if response_deadline is None:
                     waiting.add(playback)
                 deadline = response_deadline or playback_deadline
+                if completion_deadline is not None:
+                    deadline = min(deadline, completion_deadline)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
+                    if transcript_fragments and completion_deadline is not None:
+                        return " ".join(transcript_fragments)
                     if response_deadline is None:
                         raise TimeoutError("Timed out playing interviewer speech")
                     raise TimeoutError("Timed out waiting for candidate speech")
@@ -292,6 +303,8 @@ class ConversationRunner:
                     return_when=asyncio.FIRST_COMPLETED,
                 )
                 if not done:
+                    if transcript_fragments and completion_deadline is not None:
+                        return " ".join(transcript_fragments)
                     if response_deadline is None:
                         raise TimeoutError("Timed out playing interviewer speech")
                     raise TimeoutError("Timed out waiting for candidate speech")
@@ -301,13 +314,30 @@ class ConversationRunner:
                     if event.kind is SpeechEventKind.SPEECH_STARTED:
                         if not playback.done():
                             await self._stop_playback(playback)
+                        speech_active = True
+                        active_item_id = event.item_id
                         response_deadline = time.monotonic() + self.candidate_turn_timeout_seconds
+                        completion_deadline = None
                     elif event.kind is SpeechEventKind.FINAL_TRANSCRIPT:
                         if not playback.done():
                             await self._stop_playback(playback)
-                        return event.text
+                        if not transcript_fragments or transcript_fragments[-1] != event.text:
+                            transcript_fragments.append(event.text)
+                        closes_active_item = (
+                            not speech_active
+                            or active_item_id is None
+                            or event.item_id is None
+                            or event.item_id == active_item_id
+                        )
+                        if closes_active_item:
+                            speech_active = False
+                            active_item_id = None
+                            completion_deadline = (
+                                time.monotonic() + self.candidate_turn_grace_seconds
+                            )
                 if playback in done:
-                    playback.result()
+                    if not playback.cancelled():
+                        playback.result()
                     if response_deadline is None:
                         response_deadline = time.monotonic() + timeout_seconds
         finally:

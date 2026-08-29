@@ -50,7 +50,8 @@ document and transcript as untrusted data and must clarify uncertainty rather th
 
 TTS playback and candidate response waiting have separate deadlines. The candidate response timer
 starts after playback completes, or immediately when a speech-start event interrupts playback.
-This preserves the full answer window even for a longer question.
+This preserves the full answer window even for a longer question. Adjacent completed STT segments
+are combined across a short configurable pause so a multi-sentence answer is not truncated.
 
 STT, LLM, TTS, reasoning effort, VAD, supported transcription controls, context limits,
 clarification attempts, and timeouts are configured through environment settings. Setting
