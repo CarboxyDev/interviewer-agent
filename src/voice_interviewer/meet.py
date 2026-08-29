@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import re
 import time
 from collections import defaultdict, deque
@@ -68,28 +70,91 @@ def compact_page_text(text: str, limit: int = 400) -> str:
     return re.sub(r"\s+", " ", text).strip()[:limit]
 
 
+def guard_page_failure(body: str) -> tuple[FailureCode, str] | None:
+    security_match = SECURITY_TEXT.search(body)
+    if security_match:
+        matched_text = compact_page_text(security_match.group(0), limit=120)
+        return (
+            FailureCode.GOOGLE_SECURITY_INTERVENTION,
+            "Google requested an account or security check. "
+            f"The bot will not bypass it. Matched guard text: {matched_text}",
+        )
+
+    denial_match = DENIAL_TEXT.search(body)
+    if denial_match:
+        matched_text = compact_page_text(denial_match.group(0), limit=120)
+        return (
+            FailureCode.MEETING_ACCESS_DENIED,
+            f"Google Meet denied or removed the guest. Matched guard text: {matched_text}",
+        )
+
+    return None
+
+
 class MeetingAttemptLimiter:
-    def __init__(self, *, cooldown_seconds: int = 300, hourly_limit: int = 3) -> None:
+    def __init__(
+        self,
+        *,
+        cooldown_seconds: int = 300,
+        hourly_limit: int = 3,
+        state_path: Path | None = None,
+    ) -> None:
         self.cooldown_seconds = cooldown_seconds
         self.hourly_limit = hourly_limit
         self._attempts: dict[str, deque[float]] = defaultdict(deque)
+        self.state_path = state_path
+        self._load()
 
     def check_and_record(self, meeting_url: str, now: float | None = None) -> None:
-        current = time.monotonic() if now is None else now
-        attempts = self._attempts[meeting_url]
-        while attempts and current - attempts[0] >= 3600:
-            attempts.popleft()
+        current = time.time() if now is None else now
+        self._prune(current)
+        meeting_key = hashlib.sha256(meeting_url.encode("utf-8")).hexdigest()
+        attempts = self._attempts[meeting_key]
         if attempts and current - attempts[-1] < self.cooldown_seconds:
             raise InterviewerError(
                 FailureCode.MEETING_ACCESS_DENIED,
                 "Meet join cooldown is active; no automated retry was attempted",
             )
-        if len(attempts) >= self.hourly_limit:
+        total_attempts = sum(len(recent) for recent in self._attempts.values())
+        if total_attempts >= self.hourly_limit:
             raise InterviewerError(
                 FailureCode.MEETING_ACCESS_DENIED,
-                "Meet join limit reached for this URL; no automated retry was attempted",
+                "Meet join limit reached for this browser profile; "
+                "no automated retry was attempted",
             )
         attempts.append(current)
+        self._save()
+
+    def _prune(self, current: float) -> None:
+        for meeting_url in list(self._attempts):
+            attempts = self._attempts[meeting_url]
+            while attempts and current - attempts[0] >= 3600:
+                attempts.popleft()
+            if not attempts:
+                del self._attempts[meeting_url]
+
+    def _load(self) -> None:
+        if self.state_path is None or not self.state_path.exists():
+            return
+        payload = json.loads(self.state_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Meet attempt ledger must be a JSON object")
+        for meeting_url, timestamps in payload.items():
+            if not isinstance(meeting_url, str) or not isinstance(timestamps, list):
+                raise ValueError("Meet attempt ledger contains an invalid entry")
+            if not all(isinstance(timestamp, int | float) for timestamp in timestamps):
+                raise ValueError("Meet attempt ledger contains an invalid timestamp")
+            self._attempts[meeting_url].extend(float(timestamp) for timestamp in timestamps)
+
+    def _save(self) -> None:
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = self.state_path.with_suffix(f"{self.state_path.suffix}.tmp")
+        payload = {url: list(attempts) for url, attempts in self._attempts.items()}
+        temporary_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        temporary_path.replace(self.state_path)
+        self.state_path.chmod(0o600)
 
 
 class PlaywrightMeetTransport:
@@ -110,7 +175,9 @@ class PlaywrightMeetTransport:
         self.cdp_port = cdp_port
         self.browser_channel = browser_channel
         self.browser_executable_path = browser_executable_path
-        self.limiter = limiter or MeetingAttemptLimiter()
+        self.limiter = limiter or MeetingAttemptLimiter(
+            state_path=self.profile_dir.parent / "meet-attempts.json"
+        )
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._browser_process: asyncio.subprocess.Process | None = None
@@ -299,16 +366,10 @@ class PlaywrightMeetTransport:
     async def _fail_on_guard_page(self) -> None:
         page = self._require_page()
         body = await page.locator("body").inner_text()
-        if SECURITY_TEXT.search(body):
-            raise InterviewerError(
-                FailureCode.GOOGLE_SECURITY_INTERVENTION,
-                "Google requested an account or security check. The bot will not bypass it",
-            )
-        if DENIAL_TEXT.search(body):
-            raise InterviewerError(
-                FailureCode.MEETING_ACCESS_DENIED,
-                "Google Meet denied or removed the guest participant",
-            )
+        failure = guard_page_failure(body)
+        if failure is not None:
+            code, detail = failure
+            raise InterviewerError(code, detail)
 
     def _require_page(self) -> Page:
         if self._page is None:

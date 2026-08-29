@@ -9,6 +9,7 @@ session metadata, and evidence-based notes.
 - The bot joins only a meeting supplied by an authorized host.
 - It uses a guest identity named `AI Interviewer`. It never signs into Google.
 - It does not bypass admission, CAPTCHA, account, or security checks.
+- It persists recent join attempts and limits the browser profile to three attempts per hour.
 - It records only after the candidate explicitly consents in the meeting.
 - It does not score candidates or make hiring recommendations.
 - It asks no questions about protected personal characteristics.

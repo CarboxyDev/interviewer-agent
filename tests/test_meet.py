@@ -8,6 +8,7 @@ from voice_interviewer.meet import (
     MeetingAttemptLimiter,
     chromium_cdp_args,
     compact_page_text,
+    guard_page_failure,
     participant_count_from_labels,
     remove_browser_singleton_locks,
 )
@@ -47,6 +48,39 @@ def test_page_diagnostic_is_compact_and_bounded() -> None:
     assert compact_page_text(text, limit=30) == "Join this meeting " + ("x" * 12)
 
 
+@pytest.mark.parametrize(
+    ("body", "expected_code", "matched_text"),
+    [
+        (
+            "You can't join this video call",
+            FailureCode.MEETING_ACCESS_DENIED,
+            "you can't join",
+        ),
+        (
+            "Please verify that you are human",
+            FailureCode.GOOGLE_SECURITY_INTERVENTION,
+            "verify that you are human",
+        ),
+    ],
+)
+def test_guard_page_failure_preserves_only_the_matched_reason(
+    body: str,
+    expected_code: FailureCode,
+    matched_text: str,
+) -> None:
+    failure = guard_page_failure(body)
+
+    assert failure is not None
+    code, detail = failure
+    assert code is expected_code
+    assert matched_text in detail.lower()
+    assert body not in detail
+
+
+def test_regular_meet_page_is_not_a_guard_failure() -> None:
+    assert guard_page_failure("Ready to join? Join now") is None
+
+
 def test_meeting_attempt_limiter_enforces_cooldown() -> None:
     limiter = MeetingAttemptLimiter(cooldown_seconds=300, hourly_limit=3)
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=100)
@@ -62,3 +96,28 @@ def test_meeting_attempt_limiter_allows_attempt_after_cooldown() -> None:
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=100)
 
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=400)
+
+
+def test_meeting_attempt_limiter_persists_cooldown_across_restart(tmp_path: Path) -> None:
+    state_path = tmp_path / "meet-attempts.json"
+    first = MeetingAttemptLimiter(state_path=state_path)
+    first.check_and_record("https://meet.google.com/abc-defg-hij", now=100)
+
+    restarted = MeetingAttemptLimiter(state_path=state_path)
+
+    with pytest.raises(InterviewerError) as caught:
+        restarted.check_and_record("https://meet.google.com/abc-defg-hij", now=200)
+
+    assert caught.value.code is FailureCode.MEETING_ACCESS_DENIED
+    assert "abc-defg-hij" not in state_path.read_text(encoding="utf-8")
+
+
+def test_meeting_attempt_limiter_caps_profile_across_meeting_urls() -> None:
+    limiter = MeetingAttemptLimiter(cooldown_seconds=300, hourly_limit=2)
+    limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=100)
+    limiter.check_and_record("https://meet.google.com/xyz-abcd-efg", now=200)
+
+    with pytest.raises(InterviewerError) as caught:
+        limiter.check_and_record("https://meet.google.com/qrs-tuvw-xyz", now=400)
+
+    assert caught.value.code is FailureCode.MEETING_ACCESS_DENIED

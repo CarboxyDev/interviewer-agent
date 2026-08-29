@@ -35,6 +35,7 @@ docker compose exec interviewer voice-interviewer interview start \
 
 - [ ] Confirm the guest appears as `AI Interviewer` without an admission request.
 - [ ] If the guest is denied before the name screen, stop and do not retry for at least five minutes.
+- [ ] Do not delete `data/meet-attempts.json` or restart Docker to bypass the join limits.
 - [ ] Confirm it starts with disclosure and a consent question.
 - [ ] Confirm no audio file exists before the candidate says yes.
 - [ ] Interrupt one bot question and confirm playback stops promptly.
