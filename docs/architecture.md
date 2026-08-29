@@ -25,6 +25,15 @@ ArtifactStore         AudioRouter
 - `SessionRepository`: persists metadata and state transitions
 - `ArtifactStore`: owns interview files and deletion
 
+## Persistence and retrieval
+
+SQLite stores session metadata and append-only state events. Large and human-readable files stay
+on the filesystem under one directory per session, including a private `input/` directory and an
+allowlisted set of generated outputs. The repository provides newest-first, offset-based session
+pagination. API callers can list outputs, download one output, or download the full output ZIP.
+Input documents are never exposed by an artifact route. The Docker API port is bound to localhost
+because version 1 intentionally has no authentication layer.
+
 ## Audio topology
 
 ```text

@@ -224,6 +224,13 @@ class SessionView(BaseModel):
         )
 
 
+class SessionPage(BaseModel):
+    items: list[SessionView]
+    total: int
+    limit: int
+    offset: int
+
+
 class ArtifactView(BaseModel):
     name: str
     size_bytes: int

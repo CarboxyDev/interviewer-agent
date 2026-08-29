@@ -9,13 +9,19 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from starlette.background import BackgroundTask
 
 from voice_interviewer.doctor import is_ready, run_checks
-from voice_interviewer.domain import ArtifactView, HealthView, SessionCreate, SessionView
+from voice_interviewer.domain import (
+    ArtifactView,
+    HealthView,
+    SessionCreate,
+    SessionPage,
+    SessionView,
+)
 from voice_interviewer.errors import ActiveSessionError, DocumentError, SessionNotFoundError
 from voice_interviewer.runtime import Runtime, build_runtime
 
@@ -101,6 +107,13 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
         except ActiveSessionError as exc:
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
+    @app.get("/v1/interviews", response_model=SessionPage)
+    async def list_interviews(
+        limit: Annotated[int, Query(ge=1, le=100)] = 20,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> SessionPage:
+        return await application_runtime.service.list_recent(limit=limit, offset=offset)
+
     @app.get("/v1/interviews/{session_id}", response_model=SessionView)
     async def get_interview(session_id: str) -> SessionView:
         return await _get_or_404(application_runtime, session_id)
@@ -137,6 +150,18 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
             media_type="application/zip",
             background=BackgroundTask(os.unlink, archive),
         )
+
+    @app.get("/v1/interviews/{session_id}/artifacts/{artifact_name}")
+    async def download_artifact(session_id: str, artifact_name: str) -> FileResponse:
+        try:
+            paths = await application_runtime.artifacts.list(session_id)
+            await application_runtime.service.get(session_id)
+        except SessionNotFoundError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Interview not found") from exc
+        artifact = next((path for path in paths if path.name == artifact_name), None)
+        if artifact is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Artifact not found or not ready")
+        return FileResponse(artifact, filename=artifact.name)
 
     @app.delete("/v1/interviews/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
     async def delete_interview(session_id: str) -> None:

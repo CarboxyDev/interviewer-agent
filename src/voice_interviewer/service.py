@@ -7,7 +7,7 @@ from pathlib import Path
 
 from voice_interviewer.artifacts import safe_filename
 from voice_interviewer.documents import SUPPORTED_EXTENSIONS, extract_document
-from voice_interviewer.domain import Session, SessionCreate, SessionState, SessionView
+from voice_interviewer.domain import Session, SessionCreate, SessionPage, SessionState, SessionView
 from voice_interviewer.errors import ActiveSessionError, DocumentError, SessionNotFoundError
 from voice_interviewer.ports import ArtifactStore, InterviewRunner, SessionRepository
 
@@ -73,6 +73,15 @@ class InterviewService:
         if session is None:
             raise SessionNotFoundError(session_id)
         return SessionView.from_session(session)
+
+    async def list_recent(self, *, limit: int, offset: int) -> SessionPage:
+        sessions, total = await self.repository.list_recent(limit=limit, offset=offset)
+        return SessionPage(
+            items=[SessionView.from_session(session) for session in sessions],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     async def stop(self, session_id: str) -> SessionView:
         session = await self.repository.get(session_id)

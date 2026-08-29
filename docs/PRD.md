@@ -21,6 +21,7 @@ initiate a natural interview, and save consented outputs locally.
 - Deterministic repeat request for clearly unusable transcription output
 - Local SQLite metadata and filesystem artifacts
 - FastAPI and CLI control surfaces
+- Newest-first paginated session history and local-only artifact downloads
 
 ## Conversation behavior
 
@@ -74,3 +75,5 @@ initiate a natural interview, and save consented outputs locally.
 - Admission denial, timeout, or Google security friction causes a stable, visible failure and no
   bypass attempt.
 - Final artifacts are available within 15 seconds of leaving the meeting.
+- Recent sessions are returned newest first with bounded pagination.
+- Only generated output files can be downloaded; uploaded input documents are not API artifacts.

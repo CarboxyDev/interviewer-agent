@@ -64,6 +64,27 @@ account explicitly invited. If Meet presents `Ask to join`, the bot sends one re
 manual approval. `Open` access remains a controlled rehearsal fallback. See
 [docs/demo-checklist.md](docs/demo-checklist.md).
 
+## Storage and retrieval
+
+Docker bind-mounts `./data` into the service, so data survives container rebuilds and restarts.
+Session metadata and state transitions are stored in `data/interviewer.db`. Each session has a
+directory at `data/sessions/<session-id>/` containing private input documents and generated output
+artifacts. Deleting a terminal interview through the API removes both its database record and its
+session directory.
+
+The unauthenticated API is published on `127.0.0.1` only. It exposes generated outputs, but never
+the uploaded resume or job-description files:
+
+- `GET /v1/interviews?limit=20&offset=0`: newest sessions first, with total count
+- `GET /v1/interviews/{id}`: one session
+- `GET /v1/interviews/{id}/artifacts`: generated artifact names and sizes
+- `GET /v1/interviews/{id}/artifacts/{name}`: download one generated artifact
+- `GET /v1/interviews/{id}/artifacts.zip`: download all generated artifacts
+- `DELETE /v1/interviews/{id}`: delete terminal-session metadata, inputs, and outputs
+
+Allowed downloads are `interview.mp3`, `transcript.json`, `transcript.md`, `notes.md`, and
+`session.json`.
+
 ## Models and configuration
 
 All provider and pipeline choices are environment settings. The default combination prioritizes a

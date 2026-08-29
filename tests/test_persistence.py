@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -54,4 +55,31 @@ async def test_restart_marks_nonterminal_sessions_failed(tmp_path: Path) -> None
     assert interrupted is not None
     assert interrupted.state is SessionState.FAILED
     assert interrupted.failure_detail == "Service restarted during the interview"
+    await repository.close()
+
+
+async def test_repository_lists_sessions_newest_first_with_pagination(tmp_path: Path) -> None:
+    repository = SqlAlchemySessionRepository(database_url(tmp_path))
+    await repository.initialize()
+    base_time = datetime(2026, 8, 29, tzinfo=UTC)
+    sessions = [
+        Session(
+            meeting_url="https://meet.google.com/abc-defg-hij",
+            duration_minutes=15,
+            resume_name=f"resume-{index}.txt",
+            job_description_name="job.txt",
+            created_at=base_time + timedelta(minutes=index),
+            updated_at=base_time + timedelta(minutes=index),
+        )
+        for index in range(3)
+    ]
+    for session in sessions:
+        await repository.create(session)
+
+    first_page, total = await repository.list_recent(limit=2, offset=0)
+    second_page, second_total = await repository.list_recent(limit=2, offset=2)
+
+    assert total == second_total == 3
+    assert [session.id for session in first_page] == [sessions[2].id, sessions[1].id]
+    assert [session.id for session in second_page] == [sessions[0].id]
     await repository.close()

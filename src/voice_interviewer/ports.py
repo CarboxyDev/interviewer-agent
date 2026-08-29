@@ -23,6 +23,8 @@ class SessionRepository(Protocol):
 
     async def get(self, session_id: str) -> Session | None: ...
 
+    async def list_recent(self, *, limit: int, offset: int) -> tuple[list[Session], int]: ...
+
     async def transition(
         self,
         session_id: str,

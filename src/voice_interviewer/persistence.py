@@ -116,6 +116,19 @@ class SqlAlchemySessionRepository:
             row = await db.get(SessionRow, session_id)
             return _as_domain(row) if row else None
 
+    async def list_recent(self, *, limit: int, offset: int) -> tuple[list[Session], int]:
+        async with self.sessions() as db:
+            total = await db.scalar(select(func.count()).select_from(SessionRow))
+            rows = list(
+                await db.scalars(
+                    select(SessionRow)
+                    .order_by(SessionRow.created_at.desc(), SessionRow.id.desc())
+                    .offset(offset)
+                    .limit(limit)
+                )
+            )
+        return [_as_domain(row) for row in rows], int(total or 0)
+
     async def transition(
         self,
         session_id: str,
