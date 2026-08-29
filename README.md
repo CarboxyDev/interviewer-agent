@@ -10,7 +10,8 @@ session metadata, and evidence-based notes.
 - It uses either an anonymous `AI Interviewer` guest or a dedicated Google profile signed in
   manually by the operator.
 - It never automates Google credentials, MFA, CAPTCHA, cookies, or account recovery.
-- It does not bypass admission, CAPTCHA, account, or security checks.
+- It may send one normal `Ask to join` request and waits for manual host approval.
+- It does not repeat admission requests or bypass admission, CAPTCHA, account, or security checks.
 - It persists recent join attempts and limits the browser profile to three attempts per hour.
 - It records only after the candidate explicitly consents in the meeting.
 - It does not score candidates or make hiring recommendations.
@@ -30,8 +31,9 @@ docker compose up -d
 docker compose exec interviewer voice-interviewer doctor --live
 ```
 
-If anonymous guest admission is rejected, use a dedicated spare Google account without automating
-its credentials. The browser desktop is bound to localhost only:
+The recommended setup uses a dedicated spare Google account explicitly invited to the Calendar
+event. Sign in manually without automating its credentials. The browser desktop is bound to
+localhost only:
 
 ```bash
 docker compose exec interviewer voice-interviewer browser setup
@@ -53,8 +55,10 @@ curl -X POST http://localhost:8000/v1/interviews \
   -F 'job_description=@./job-description.txt'
 ```
 
-The host must join first and set meeting access to `Open`. Do not admit the bot through an
-`Ask to join` flow. See [docs/demo-checklist.md](docs/demo-checklist.md).
+The host should join first. Prefer a `Trusted` or `Restricted` meeting with the dedicated bot
+account explicitly invited. If Meet presents `Ask to join`, the bot sends one request and waits for
+manual approval. `Open` access remains a controlled rehearsal fallback. See
+[docs/demo-checklist.md](docs/demo-checklist.md).
 
 ## Models and configuration
 
@@ -81,6 +85,7 @@ The main speech controls are:
 - `INTERVIEWER_STT_CONTEXT_MAX_CHARS`: bounded resume and role context sent to STT, or `0` to disable
 - `INTERVIEWER_STT_KEYWORD_LIMIT`: expected terminology sent to STT, or `0` to disable
 - `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
+- `INTERVIEWER_ADMISSION_TIMEOUT_SECONDS`: maximum wait for manual host admission
 - `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
 - `INTERVIEWER_CANDIDATE_TURN_TIMEOUT_SECONDS`: maximum active answer duration after speech starts
 - `INTERVIEWER_CANDIDATE_TURN_GRACE_SECONDS`: pause allowed between answer segments
@@ -120,5 +125,5 @@ developer documentation, not a custom product UI.
 
 The domain, API, CLI, persistence, document extraction, safe Meet admission, provider contracts,
 and Docker audio environment are implemented independently. A real interview is deliberately
-blocked unless readiness checks pass. Google Meet can refuse an automated guest before admission,
+blocked unless readiness checks pass. Google Meet can refuse an account or guest before admission,
 and its DOM can change, so the live demo checklist includes a required feasibility rehearsal.

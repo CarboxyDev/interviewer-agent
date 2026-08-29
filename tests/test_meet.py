@@ -1,12 +1,14 @@
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
-from voice_interviewer.domain import FailureCode
+from voice_interviewer.domain import FailureCode, JoinOutcome
 from voice_interviewer.errors import InterviewerError
 from voice_interviewer.meet import (
     JOIN_BUTTON_TEXT,
     MeetingAttemptLimiter,
+    PlaywrightMeetTransport,
     chromium_cdp_args,
     compact_page_text,
     guard_page_failure,
@@ -15,9 +17,111 @@ from voice_interviewer.meet import (
 )
 
 
+class StubLocator:
+    def __init__(self, *, visible: bool) -> None:
+        self.visible = visible
+        self.click = AsyncMock()
+        self.wait_for = AsyncMock()
+
+    async def is_visible(self) -> bool:
+        return self.visible
+
+
+class StubMeetPage:
+    def __init__(self, *, ask_visible: bool, join_visible: bool, leave_visible: bool) -> None:
+        self.ask = StubLocator(visible=ask_visible)
+        self.join = StubLocator(visible=join_visible)
+        self.leave = StubLocator(visible=leave_visible)
+        self.goto = AsyncMock()
+
+    def get_by_role(self, role: str, *, name: object) -> StubLocator:
+        pattern = str(getattr(name, "pattern", name)).lower()
+        if "ask to join" in pattern:
+            return self.ask
+        if "join now" in pattern:
+            return self.join
+        if "leave call" in pattern:
+            return self.leave
+        raise AssertionError(f"Unexpected role query: {role} {pattern}")
+
+    def is_closed(self) -> bool:
+        return False
+
+
 @pytest.mark.parametrize("label", ["Join now", "Rejoin"])
 def test_join_button_pattern_accepts_normal_meet_controls(label: str) -> None:
     assert JOIN_BUTTON_TEXT.search(label)
+
+
+async def test_join_requests_manual_admission_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = StubMeetPage(ask_visible=True, join_visible=False, leave_visible=False)
+    transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
+    monkeypatch.setattr(transport, "_start_browser", AsyncMock(return_value=page))
+    monkeypatch.setattr(transport, "_wait_for_prejoin", AsyncMock(return_value=None))
+    monkeypatch.setattr(transport, "_configure_prejoin_media", AsyncMock())
+    monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
+
+    outcome = await transport.join(
+        "https://meet.google.com/abc-defg-hij",
+        "AI Interviewer",
+    )
+
+    assert outcome is JoinOutcome.ADMISSION_REQUESTED
+    assert page.ask.click.await_count == 1
+    assert page.join.click.await_count == 0
+
+
+async def test_invited_account_joins_without_admission_wait(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = StubMeetPage(ask_visible=False, join_visible=True, leave_visible=False)
+    transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
+    wait_until_in_call = AsyncMock()
+    monkeypatch.setattr(transport, "_start_browser", AsyncMock(return_value=page))
+    monkeypatch.setattr(transport, "_wait_for_prejoin", AsyncMock(return_value=None))
+    monkeypatch.setattr(transport, "_configure_prejoin_media", AsyncMock())
+    monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
+    monkeypatch.setattr(transport, "_wait_until_in_call", wait_until_in_call)
+
+    outcome = await transport.join(
+        "https://meet.google.com/abc-defg-hij",
+        "AI Interviewer",
+    )
+
+    assert outcome is JoinOutcome.JOINED
+    assert page.join.click.await_count == 1
+    wait_until_in_call.assert_awaited_once()
+
+
+async def test_manual_admission_wait_completes_when_call_controls_appear(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = StubMeetPage(ask_visible=False, join_visible=False, leave_visible=True)
+    transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
+    transport._page = page  # type: ignore[assignment]
+    monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
+
+    await transport.wait_for_admission(1)
+
+
+async def test_manual_admission_timeout_has_stable_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = StubMeetPage(ask_visible=False, join_visible=False, leave_visible=False)
+    transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
+    transport._page = page  # type: ignore[assignment]
+    monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
+
+    with pytest.raises(InterviewerError) as caught:
+        await transport.wait_for_admission(0)
+
+    assert caught.value.code is FailureCode.MEETING_ADMISSION_TIMEOUT
 
 
 def test_cdp_browser_is_loopback_only_and_uses_persistent_profile(tmp_path: Path) -> None:
@@ -61,6 +165,11 @@ def test_page_diagnostic_is_compact_and_bounded() -> None:
             "You can't join this video call",
             FailureCode.MEETING_ACCESS_DENIED,
             "you can't join",
+        ),
+        (
+            "No one responded to your request to join",
+            FailureCode.MEETING_ACCESS_DENIED,
+            "no one responded to your request",
         ),
         (
             "Please verify that you are human",

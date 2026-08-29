@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     browser_cdp_port: int = Field(default=9222, ge=1024, le=65535)
     browser_channel: str | None = None
     browser_executable_path: Path | None = None
+    admission_timeout_seconds: int = Field(default=120, ge=30, le=300)
     participant_timeout_seconds: int = Field(default=300, ge=30, le=900)
     consent_timeout_seconds: int = Field(default=120, ge=30, le=300)
     response_timeout_seconds: int = Field(default=20, ge=5, le=60)

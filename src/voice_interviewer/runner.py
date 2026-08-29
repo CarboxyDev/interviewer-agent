@@ -16,6 +16,7 @@ from voice_interviewer.documents import extract_document
 from voice_interviewer.domain import (
     ConsentDecision,
     FailureCode,
+    JoinOutcome,
     Session,
     SessionState,
     Speaker,
@@ -46,6 +47,7 @@ class ConversationRunner:
         stt: SpeechToText,
         interviewer: Interviewer,
         tts: TextToSpeech,
+        admission_timeout_seconds: int,
         participant_timeout_seconds: int,
         consent_timeout_seconds: int,
         response_timeout_seconds: int,
@@ -63,6 +65,7 @@ class ConversationRunner:
         self.stt = stt
         self.interviewer = interviewer
         self.tts = tts
+        self.admission_timeout_seconds = admission_timeout_seconds
         self.participant_timeout_seconds = participant_timeout_seconds
         self.consent_timeout_seconds = consent_timeout_seconds
         self.response_timeout_seconds = response_timeout_seconds
@@ -103,7 +106,10 @@ class ConversationRunner:
 
             self._raise_if_stopped()
             await self.repository.transition(session_id, SessionState.JOINING)
-            await self.meet.join(session.meeting_url, "AI Interviewer")
+            join_outcome = await self.meet.join(session.meeting_url, "AI Interviewer")
+            if join_outcome is JoinOutcome.ADMISSION_REQUESTED:
+                await self.repository.transition(session_id, SessionState.AWAITING_ADMISSION)
+                await self.meet.wait_for_admission(self.admission_timeout_seconds)
             await self.repository.transition(session_id, SessionState.WAITING_FOR_PARTICIPANT)
             await self.meet.wait_for_participant(self.participant_timeout_seconds)
             await self.repository.transition(session_id, SessionState.AWAITING_CONSENT)

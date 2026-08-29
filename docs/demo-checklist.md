@@ -16,7 +16,8 @@
 ## Before each demo
 
 - [ ] Use a fresh Google Meet owned by you.
-- [ ] Set meeting access to `Open`.
+- [ ] Prefer `Trusted` or `Restricted` access and explicitly invite the dedicated bot account.
+- [ ] Keep normal knocking enabled if the bot account is not explicitly invited.
 - [ ] Join the meeting as host before starting the bot.
 - [ ] Use synthetic or authorized resume and job description files.
 - [ ] Confirm the meeting owner authorized the automated interviewer participant.
@@ -33,8 +34,9 @@ docker compose exec interviewer voice-interviewer interview start \
   --authorized
 ```
 
-- [ ] Confirm the expected guest or dedicated account appears without an admission request.
-- [ ] If the guest is denied before the name screen, stop and do not retry for at least five minutes.
+- [ ] Confirm the invited bot joins directly, or manually admit its single `Ask to join` request.
+- [ ] If the bot is denied, times out, or meets security friction, stop and do not retry for at
+      least five minutes.
 - [ ] Do not delete `data/meet-attempts.json` or restart Docker to bypass the join limits.
 - [ ] Confirm it starts with disclosure and a consent question.
 - [ ] Confirm no audio file exists before the candidate says yes.

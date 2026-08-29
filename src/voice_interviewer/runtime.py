@@ -95,6 +95,7 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
                 model=configured.tts_model,
                 voice=configured.tts_voice,
             ),
+            admission_timeout_seconds=configured.admission_timeout_seconds,
             participant_timeout_seconds=configured.participant_timeout_seconds,
             consent_timeout_seconds=configured.consent_timeout_seconds,
             response_timeout_seconds=configured.response_timeout_seconds,

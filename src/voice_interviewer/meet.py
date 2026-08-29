@@ -19,7 +19,7 @@ from playwright.async_api import (
     async_playwright,
 )
 
-from voice_interviewer.domain import FailureCode
+from voice_interviewer.domain import FailureCode, JoinOutcome
 from voice_interviewer.errors import InterviewerError
 
 SECURITY_TEXT = re.compile(
@@ -27,7 +27,9 @@ SECURITY_TEXT = re.compile(
     re.IGNORECASE,
 )
 DENIAL_TEXT = re.compile(
-    r"you can't join|not allowed to join|denied your request|removed from the meeting",
+    r"you can't join|not allowed to join|denied (?:your )?request|"
+    r"request to join was denied|weren't allowed into this meeting|"
+    r"no one responded to your request|removed from the meeting",
     re.IGNORECASE,
 )
 PARTICIPANT_COUNT = re.compile(r"\b(\d+)\s+(?:participant|people|person)", re.IGNORECASE)
@@ -35,6 +37,9 @@ GUEST_NAME_INPUT = (
     'input[placeholder*="name" i], input[aria-label*="name" i], input[name*="name" i]'
 )
 JOIN_BUTTON_TEXT = re.compile(r"join now|rejoin", re.IGNORECASE)
+ASK_TO_JOIN_TEXT = re.compile(r"ask to join", re.IGNORECASE)
+LEAVE_CALL_TEXT = re.compile(r"leave call", re.IGNORECASE)
+DIRECT_JOIN_TIMEOUT_SECONDS = 20
 BROWSER_SINGLETON_FILES = ("SingletonCookie", "SingletonLock", "SingletonSocket")
 
 
@@ -185,7 +190,7 @@ class PlaywrightMeetTransport:
         self._context: BrowserContext | None = None
         self._page: Page | None = None
 
-    async def join(self, meeting_url: str, display_name: str) -> None:
+    async def join(self, meeting_url: str, display_name: str) -> JoinOutcome:
         self.limiter.check_and_record(meeting_url)
         try:
             page = await self._start_browser()
@@ -196,17 +201,20 @@ class PlaywrightMeetTransport:
                 await name.fill(display_name)
             await self._configure_prejoin_media()
 
-            ask = page.get_by_role("button", name=re.compile("ask to join", re.I))
+            ask = page.get_by_role("button", name=ASK_TO_JOIN_TEXT)
             if await ask.is_visible():
-                raise InterviewerError(
-                    FailureCode.MEETING_NOT_OPEN,
-                    "Meeting requires admission. Set meeting access to Open and start again later",
-                )
+                await ask.click()
+                await self._fail_on_guard_page()
+                return JoinOutcome.ADMISSION_REQUESTED
             join = page.get_by_role("button", name=JOIN_BUTTON_TEXT)
             await join.wait_for(state="visible", timeout=15_000)
             await join.click()
-            await asyncio.sleep(2)
-            await self._fail_on_guard_page()
+            await self._wait_until_in_call(
+                DIRECT_JOIN_TIMEOUT_SECONDS,
+                timeout_code=FailureCode.MEETING_ACCESS_DENIED,
+                timeout_detail="Google Meet did not complete the direct join",
+            )
+            return JoinOutcome.JOINED
         except InterviewerError:
             await self.leave()
             raise
@@ -238,7 +246,7 @@ class PlaywrightMeetTransport:
     async def _wait_for_prejoin(self, page: Page) -> Locator | None:
         name = page.locator(GUEST_NAME_INPUT).first
         join = page.get_by_role("button", name=JOIN_BUTTON_TEXT)
-        ask = page.get_by_role("button", name=re.compile("ask to join", re.I))
+        ask = page.get_by_role("button", name=ASK_TO_JOIN_TEXT)
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             await self._fail_on_guard_page()
@@ -252,6 +260,36 @@ class PlaywrightMeetTransport:
             FailureCode.BROWSER_DISCONNECTED,
             f"Meet pre-join controls were not available. Visible page text: {body}",
         )
+
+    async def wait_for_admission(self, timeout_seconds: int) -> None:
+        await self._wait_until_in_call(
+            timeout_seconds,
+            timeout_code=FailureCode.MEETING_ADMISSION_TIMEOUT,
+            timeout_detail="The host did not admit the interviewer before the admission timeout",
+        )
+
+    async def _wait_until_in_call(
+        self,
+        timeout_seconds: int,
+        *,
+        timeout_code: FailureCode,
+        timeout_detail: str,
+    ) -> None:
+        page = self._require_page()
+        leave_call = page.get_by_role("button", name=LEAVE_CALL_TEXT)
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if page.is_closed():
+                raise InterviewerError(
+                    FailureCode.BROWSER_DISCONNECTED,
+                    "Google Meet page closed while joining",
+                )
+            await self._fail_on_guard_page()
+            if await leave_call.is_visible():
+                return
+            await asyncio.sleep(0.5)
+        await self._fail_on_guard_page()
+        raise InterviewerError(timeout_code, timeout_detail)
 
     async def _start_browser(self) -> Page:
         self.profile_dir.mkdir(parents=True, exist_ok=True)
@@ -344,7 +382,7 @@ class PlaywrightMeetTransport:
 
     async def leave(self) -> None:
         if self._page is not None and not self._page.is_closed():
-            button = self._page.get_by_role("button", name=re.compile("leave call", re.I))
+            button = self._page.get_by_role("button", name=LEAVE_CALL_TEXT)
             with suppress(Exception):
                 if await button.is_visible():
                     await button.click(timeout=2_000)

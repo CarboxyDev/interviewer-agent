@@ -6,6 +6,7 @@ from pathlib import Path
 
 from voice_interviewer.domain import (
     InterviewNotes,
+    JoinOutcome,
     NextTurn,
     SessionState,
     SpeechEvent,
@@ -35,12 +36,18 @@ class HoldingRunner:
 
 
 class FakeMeet:
-    def __init__(self) -> None:
+    def __init__(self, join_outcome: JoinOutcome = JoinOutcome.JOINED) -> None:
         self.joined = False
         self.left = False
+        self.join_outcome = join_outcome
+        self.admission_waited = False
 
-    async def join(self, meeting_url: str, display_name: str) -> None:
+    async def join(self, meeting_url: str, display_name: str) -> JoinOutcome:
         self.joined = meeting_url.endswith("abc-defg-hij") and display_name == "AI Interviewer"
+        return self.join_outcome
+
+    async def wait_for_admission(self, timeout_seconds: int) -> None:
+        self.admission_waited = True
 
     async def wait_for_participant(self, timeout_seconds: int) -> None:
         return None

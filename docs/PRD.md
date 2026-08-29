@@ -12,7 +12,8 @@ initiate a natural interview, and save consented outputs locally.
 - One active interview per service instance
 - 5 to 45 minutes, default 15
 - Resume and job description in PDF, DOCX, or TXT
-- Guest Google Meet participant named `AI Interviewer`
+- Dedicated or guest Google Meet participant named `AI Interviewer`
+- Direct invited-account admission with one-shot `Ask to join` fallback
 - Explicit streaming cascade: STT, text LLM, TTS
 - Interruption handling that stops bot speech when the candidate speaks
 - Configurable model, reasoning, VAD, latency, timeout, and clarification controls
@@ -43,7 +44,7 @@ initiate a natural interview, and save consented outputs locally.
 ## Non-goals
 
 - Google account sign-in automation
-- Admission, CAPTCHA, or security-control bypasses
+- Repeated admission requests or admission, CAPTCHA, and security-control bypasses
 - Video analysis, emotion detection, or identity inference
 - Candidate ranking, scoring, or hiring recommendation
 - Calendar scheduling or a custom UI
@@ -61,5 +62,7 @@ initiate a natural interview, and save consented outputs locally.
 - Normal responses begin within 3 seconds on a healthy network.
 - The agent never asks about protected personal characteristics.
 - A second concurrent start returns HTTP 409.
-- Admission or Google security friction causes a stable, visible failure and no bypass attempt.
+- A manual admission request is sent at most once and has a configurable timeout.
+- Admission denial, timeout, or Google security friction causes a stable, visible failure and no
+  bypass attempt.
 - Final artifacts are available within 15 seconds of leaving the meeting.

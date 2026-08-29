@@ -61,8 +61,13 @@ those optional behaviors.
 ## State machine
 
 ```text
-CREATED -> PREPARING -> JOINING -> WAITING_FOR_PARTICIPANT
-        -> AWAITING_CONSENT -> ACTIVE -> FINALIZING -> COMPLETED
+CREATED -> PREPARING -> JOINING -----------------------> WAITING_FOR_PARTICIPANT
+                            |                                      |
+                            -> AWAITING_ADMISSION ------------------>
+                                   |
+                            manual host approval
+
+WAITING_FOR_PARTICIPANT -> AWAITING_CONSENT -> ACTIVE -> FINALIZING -> COMPLETED
 
 Any nonterminal state -> STOPPED or FAILED
 ```
@@ -74,5 +79,7 @@ than pretending that an interview is still active.
 
 The official Google Meet Media API is receive-only, so it cannot deliver interviewer audio. Version
 1 uses a normal Chromium participant, either anonymous or backed by a dedicated profile that the
-operator signed into manually. It clicks only `Join now` or `Rejoin`. If the page requires `Ask to
-join`, CAPTCHA, account recovery, or another security step, the adapter fails closed.
+operator signed into manually. An explicitly invited account can use `Join now` directly. If Meet
+requires admission, the adapter clicks `Ask to join` once and waits for manual host approval within
+a configured timeout. Denial, timeout, CAPTCHA, account recovery, or another security step fails
+closed without another request or a bypass attempt.

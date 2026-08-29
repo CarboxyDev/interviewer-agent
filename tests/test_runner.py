@@ -5,7 +5,13 @@ from pathlib import Path
 
 from tests.fakes import FakeAudio, FakeInterviewer, FakeMeet, FakeSTT, FakeTTS
 from voice_interviewer.artifacts import FilesystemArtifactStore
-from voice_interviewer.domain import Session, SessionState, SpeechEvent, SpeechEventKind
+from voice_interviewer.domain import (
+    JoinOutcome,
+    Session,
+    SessionState,
+    SpeechEvent,
+    SpeechEventKind,
+)
 from voice_interviewer.persistence import SqlAlchemySessionRepository
 from voice_interviewer.runner import ConversationRunner
 
@@ -40,10 +46,11 @@ async def prepare(
 async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path) -> None:
     session, repository, artifacts = await prepare(tmp_path)
     audio = FakeAudio()
+    meet = FakeMeet(JoinOutcome.ADMISSION_REQUESTED)
     runner = ConversationRunner(
         repository=repository,
         artifacts=artifacts,
-        meet=FakeMeet(),
+        meet=meet,
         audio=audio,
         stt=FakeSTT(
             [
@@ -58,6 +65,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
         ),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
@@ -74,6 +82,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     assert completed is not None
     assert completed.state is SessionState.COMPLETED
     assert completed.consented_at is not None
+    assert meet.admission_waited is True
     assert audio.stops >= 2
     names = {path.name for path in await artifacts.list(str(session.id))}
     assert names == {
@@ -96,6 +105,7 @@ async def test_runner_deletes_content_when_consent_declined(tmp_path: Path) -> N
         stt=FakeSTT([SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "No, I decline")]),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
@@ -130,6 +140,7 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
         ),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
@@ -168,6 +179,7 @@ async def test_runner_retries_an_unclear_transcript_and_passes_stt_hints(tmp_pat
         stt=stt,
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
@@ -215,6 +227,7 @@ async def test_response_timeout_starts_after_playback_finishes(tmp_path: Path) -
         stt=FakeSTT([]),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=1,
@@ -253,6 +266,7 @@ async def test_active_candidate_speech_uses_longer_turn_timeout(tmp_path: Path) 
         stt=FakeSTT([]),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=0.05,
@@ -296,6 +310,7 @@ async def test_adjacent_stt_segments_are_combined_into_one_answer(tmp_path: Path
         stt=FakeSTT([]),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=0.1,
@@ -344,6 +359,7 @@ async def test_older_final_event_does_not_close_newer_active_segment(tmp_path: P
         stt=FakeSTT([]),
         interviewer=FakeInterviewer(),
         tts=FakeTTS(),
+        admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
         response_timeout_seconds=0.1,

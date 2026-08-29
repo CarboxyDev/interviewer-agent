@@ -6,6 +6,7 @@ from typing import Protocol
 
 from voice_interviewer.domain import (
     InterviewNotes,
+    JoinOutcome,
     NextTurn,
     Session,
     SessionState,
@@ -69,7 +70,9 @@ class ArtifactStore(Protocol):
 
 
 class MeetTransport(Protocol):
-    async def join(self, meeting_url: str, display_name: str) -> None: ...
+    async def join(self, meeting_url: str, display_name: str) -> JoinOutcome: ...
+
+    async def wait_for_admission(self, timeout_seconds: int) -> None: ...
 
     async def wait_for_participant(self, timeout_seconds: int) -> None: ...
 
