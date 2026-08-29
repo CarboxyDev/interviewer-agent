@@ -10,6 +10,18 @@ CONSENT_DISCLOSURE = (
     "and transcription? Please answer yes or no."
 )
 
+INTERVIEW_OPENING = (
+    "Thank you. I will begin with a brief overview, then ask focused questions about your "
+    "backend experience and technical decisions. Please ask me to repeat anything that is "
+    "unclear, and take a moment to think when needed. To start, please give me a brief overview "
+    "of your recent backend work."
+)
+
+INTERVIEW_CLOSING = (
+    "Thank you for your time and for sharing your experience. That concludes the interview. "
+    "Your responses have been recorded for review, and you may now leave the meeting."
+)
+
 DECLINE_PATTERNS = (
     r"\bno\b",
     r"\bdo not\b",

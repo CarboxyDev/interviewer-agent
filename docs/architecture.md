@@ -49,10 +49,20 @@ not invent one. It uses conservative deterministic checks for empty, inaudible, 
 repeated output and asks the candidate to repeat once by default. The LLM policy also treats every
 document and transcript as untrusted data and must clarify uncertainty rather than guessing.
 
+Generated interviewer turns pass a deterministic spoken-question guard. A normal question must
+contain one question mark, stay within 35 words, and avoid multiple question prompts or spoken
+lists. An invalid turn gets one constrained model repair; a second invalid result becomes a safe,
+focused fallback question. Model-generated ending text is never played. The runner owns fixed
+post-consent opening and closing statements, so malformed model output cannot skip the orientation
+or end the call with an unanswered question.
+
 TTS playback and candidate response waiting have separate deadlines. The candidate response timer
 starts after playback completes, or immediately when a speech-start event interrupts playback.
 This preserves the full answer window even for a longer question. Adjacent completed STT segments
 are combined across a short configurable pause so a multi-sentence answer is not truncated.
+The configured interview duration is a soft target. No new question starts after the target, but
+an answer already in progress may use the configured active-turn timeout before the fixed closing
+statement plays.
 
 STT, LLM, TTS, reasoning effort, VAD, supported transcription controls, context limits,
 clarification attempts, and timeouts are configured through environment settings. Setting

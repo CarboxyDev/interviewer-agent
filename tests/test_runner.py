@@ -5,6 +5,7 @@ from pathlib import Path
 
 from tests.fakes import FakeAudio, FakeInterviewer, FakeMeet, FakeSTT, FakeTTS
 from voice_interviewer.artifacts import FilesystemArtifactStore
+from voice_interviewer.conversation import INTERVIEW_CLOSING, INTERVIEW_OPENING
 from voice_interviewer.domain import (
     JoinOutcome,
     Session,
@@ -59,6 +60,11 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
                 SpeechEvent(
                     SpeechEventKind.FINAL_TRANSCRIPT,
+                    "I currently build backend APIs and data pipelines.",
+                ),
+                SpeechEvent(SpeechEventKind.SPEECH_STARTED),
+                SpeechEvent(
+                    SpeechEventKind.FINAL_TRANSCRIPT,
                     "I designed a versioned FastAPI service.",
                 ),
             ]
@@ -84,6 +90,14 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     assert completed.consented_at is not None
     assert meet.admission_waited is True
     assert audio.stops >= 2
+    transcript_path = artifacts.session_dir(str(session.id)) / "transcript.json"
+    utterances = json.loads(transcript_path.read_text())
+    assert utterances[2]["text"] == INTERVIEW_OPENING
+    assert utterances[-1]["text"] == INTERVIEW_CLOSING
+    assert not any(
+        item["text"] == "What if the external call succeeded but the database write failed?"
+        for item in utterances
+    )
     names = {path.name for path in await artifacts.list(str(session.id))}
     assert names == {
         "interview.mp3",

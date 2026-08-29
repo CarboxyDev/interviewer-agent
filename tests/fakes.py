@@ -119,7 +119,7 @@ class FakeInterviewer:
         seconds_remaining: int,
     ) -> NextTurn:
         candidate_answers = [item for item in transcript if item.speaker.value == "candidate"]
-        if len(candidate_answers) == 1:
+        if len(candidate_answers) == 2:
             return NextTurn(
                 say="Tell me about an API you designed.",
                 rationale="Gather relevant evidence.",
@@ -127,8 +127,8 @@ class FakeInterviewer:
                 should_end=False,
             )
         return NextTurn(
-            say="Thank you. That concludes the interview.",
-            rationale="Close after the planned evidence.",
+            say="What if the external call succeeded but the database write failed?",
+            rationale="Simulate a malformed ending turn from the model.",
             topic="Close",
             should_end=True,
         )

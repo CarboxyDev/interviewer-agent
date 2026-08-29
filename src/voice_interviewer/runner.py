@@ -7,6 +7,8 @@ from contextlib import suppress
 
 from voice_interviewer.conversation import (
     CONSENT_DISCLOSURE,
+    INTERVIEW_CLOSING,
+    INTERVIEW_OPENING,
     build_transcription_hints,
     classify_consent,
     is_consent_withdrawal,
@@ -253,19 +255,64 @@ class ConversationRunner:
         ]
         started = time.monotonic()
         duration_seconds = duration_minutes * 60
+        opening_started = int((time.monotonic() - started) * 1000)
+        transcript.append(
+            Utterance(Speaker.INTERVIEWER, INTERVIEW_OPENING, opening_started, opening_started)
+        )
+        opening_response = await self._say_and_receive(
+            INTERVIEW_OPENING,
+            events,
+            timeout_seconds=self.response_timeout_seconds,
+        )
+        opening_ended = int((time.monotonic() - started) * 1000)
+        self._raise_if_consent_withdrawn(opening_response)
+        transcript.append(
+            Utterance(Speaker.CANDIDATE, opening_response, opening_started, opening_ended)
+        )
+        for _ in range(self.transcript_clarification_attempts):
+            if not transcript_needs_clarification(opening_response):
+                break
+            clarification = (
+                "I may not have heard that clearly. Could you please repeat your answer?"
+            )
+            clarification_started = int((time.monotonic() - started) * 1000)
+            transcript.append(
+                Utterance(
+                    Speaker.INTERVIEWER,
+                    clarification,
+                    clarification_started,
+                    clarification_started,
+                )
+            )
+            opening_response = await self._say_and_receive(
+                clarification,
+                events,
+                timeout_seconds=self.response_timeout_seconds,
+            )
+            opening_ended = int((time.monotonic() - started) * 1000)
+            self._raise_if_consent_withdrawn(opening_response)
+            transcript.append(
+                Utterance(
+                    Speaker.CANDIDATE,
+                    opening_response,
+                    clarification_started,
+                    opening_ended,
+                )
+            )
         while not self._stop_requested.is_set():
             elapsed = int(time.monotonic() - started)
+            if elapsed >= duration_seconds:
+                break
             remaining = max(0, duration_seconds - elapsed)
             turn = await self.interviewer.next_turn(
                 plan=plan,
                 transcript=transcript,
                 seconds_remaining=remaining,
             )
+            if turn.should_end or time.monotonic() - started >= duration_seconds:
+                break
             turn_started = int((time.monotonic() - started) * 1000)
             transcript.append(Utterance(Speaker.INTERVIEWER, turn.say, turn_started, turn_started))
-            if turn.should_end or remaining <= 0:
-                await self._play_with_timeout(turn.say)
-                break
             response = await self._say_and_receive(
                 turn.say,
                 events,
@@ -304,6 +351,11 @@ class ConversationRunner:
                         response_ended,
                     )
                 )
+        closing_started = int((time.monotonic() - started) * 1000)
+        transcript.append(
+            Utterance(Speaker.INTERVIEWER, INTERVIEW_CLOSING, closing_started, closing_started)
+        )
+        await self._play_with_timeout(INTERVIEW_CLOSING)
         self._raise_if_stopped()
         return transcript
 

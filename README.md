@@ -4,6 +4,10 @@ A consent-first, Python-first voice interviewer that joins Google Meet as a gues
 explicit STT to LLM to TTS cascade. It produces an audio recording, speaker-labelled transcript,
 session metadata, and evidence-based notes.
 
+After consent, the agent explains the interview format and asks one focused, verbally answerable
+question at a time. The requested duration is a soft target: an answer already in progress can
+finish before the agent plays a guaranteed closing statement.
+
 ## Safety contract
 
 - The bot joins only a meeting supplied by an authorized host.
