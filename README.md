@@ -12,7 +12,7 @@ session metadata, and evidence-based notes.
 - It never automates Google credentials, MFA, CAPTCHA, cookies, or account recovery.
 - It may send one normal `Ask to join` request and waits for manual host approval.
 - It does not repeat admission requests or bypass admission, CAPTCHA, account, or security checks.
-- It persists recent join attempts and limits the browser profile to three attempts per hour.
+- It persists recent join attempts and defaults to three attempts per browser profile per hour.
 - It records only after the candidate explicitly consents in the meeting.
 - It does not score candidates or make hiring recommendations.
 - It asks no questions about protected personal characteristics.
@@ -85,6 +85,8 @@ The main speech controls are:
 - `INTERVIEWER_STT_CONTEXT_MAX_CHARS`: bounded resume and role context sent to STT, or `0` to disable
 - `INTERVIEWER_STT_KEYWORD_LIMIT`: expected terminology sent to STT, or `0` to disable
 - `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
+- `INTERVIEWER_MEET_ATTEMPT_COOLDOWN_SECONDS`: same-link retry cooldown, or `0` to disable
+- `INTERVIEWER_MEET_ATTEMPT_HOURLY_LIMIT`: profile-wide hourly limit, or `0` to disable
 - `INTERVIEWER_ADMISSION_TIMEOUT_SECONDS`: maximum wait for manual host admission
 - `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
 - `INTERVIEWER_CANDIDATE_TURN_TIMEOUT_SECONDS`: maximum active answer duration after speech starts

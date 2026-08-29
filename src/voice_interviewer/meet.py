@@ -116,13 +116,17 @@ class MeetingAttemptLimiter:
         self._prune(current)
         meeting_key = hashlib.sha256(meeting_url.encode("utf-8")).hexdigest()
         attempts = self._attempts[meeting_key]
-        if attempts and current - attempts[-1] < self.cooldown_seconds:
+        if (
+            self.cooldown_seconds > 0
+            and attempts
+            and current - attempts[-1] < self.cooldown_seconds
+        ):
             raise InterviewerError(
                 FailureCode.MEETING_ACCESS_DENIED,
                 "Meet join cooldown is active; no automated retry was attempted",
             )
         total_attempts = sum(len(recent) for recent in self._attempts.values())
-        if total_attempts >= self.hourly_limit:
+        if self.hourly_limit > 0 and total_attempts >= self.hourly_limit:
             raise InterviewerError(
                 FailureCode.MEETING_ACCESS_DENIED,
                 "Meet join limit reached for this browser profile; "

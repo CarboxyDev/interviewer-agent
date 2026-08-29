@@ -83,4 +83,6 @@ The official Google Meet Media API is receive-only, so it cannot deliver intervi
 operator signed into manually. An explicitly invited account can use `Join now` directly. If Meet
 requires admission, the adapter clicks `Ask to join` once and waits for manual host approval within
 a configured timeout. Denial, timeout, CAPTCHA, account recovery, or another security step fails
-closed without another request or a bypass attempt.
+closed without another admission request or a security bypass attempt. A persistent retry limiter
+defaults to a five-minute same-link cooldown and three attempts per browser profile per hour. Both
+limits are configurable, and `0` disables a limit for an explicitly authorized controlled demo.

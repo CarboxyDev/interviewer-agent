@@ -213,6 +213,13 @@ def test_meeting_attempt_limiter_allows_attempt_after_cooldown() -> None:
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=400)
 
 
+def test_meeting_attempt_limiter_can_be_disabled_for_an_authorized_demo() -> None:
+    limiter = MeetingAttemptLimiter(cooldown_seconds=0, hourly_limit=0)
+
+    for now in range(10):
+        limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=now)
+
+
 def test_meeting_attempt_limiter_persists_cooldown_across_restart(tmp_path: Path) -> None:
     state_path = tmp_path / "meet-attempts.json"
     first = MeetingAttemptLimiter(state_path=state_path)

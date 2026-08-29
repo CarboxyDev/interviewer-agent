@@ -8,7 +8,7 @@ from voice_interviewer.artifacts import FilesystemArtifactStore
 from voice_interviewer.audio import PulseAudioRouter
 from voice_interviewer.config import Settings
 from voice_interviewer.domain import FailureCode
-from voice_interviewer.meet import PlaywrightMeetTransport
+from voice_interviewer.meet import MeetingAttemptLimiter, PlaywrightMeetTransport
 from voice_interviewer.openai_adapters import (
     OpenAIInterviewer,
     OpenAIRealtimeTranscriber,
@@ -74,6 +74,11 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
                 cdp_port=configured.browser_cdp_port,
                 browser_channel=configured.browser_channel,
                 browser_executable_path=configured.browser_executable_path,
+                limiter=MeetingAttemptLimiter(
+                    cooldown_seconds=configured.meet_attempt_cooldown_seconds,
+                    hourly_limit=configured.meet_attempt_hourly_limit,
+                    state_path=configured.browser_profile_dir.parent / "meet-attempts.json",
+                ),
             ),
             audio=PulseAudioRouter(),
             stt=OpenAIRealtimeTranscriber(
