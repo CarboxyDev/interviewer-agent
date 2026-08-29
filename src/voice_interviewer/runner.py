@@ -36,6 +36,40 @@ from voice_interviewer.ports import (
 )
 
 
+class SpeechEventCursor:
+    """Keeps one pending read alive while the conversation moves between turns."""
+
+    def __init__(self, source: AsyncIterator[SpeechEvent]) -> None:
+        self.source = source
+        self._pending: asyncio.Task[SpeechEvent] | None = None
+
+    def next_task(self) -> asyncio.Task[SpeechEvent]:
+        if self._pending is None:
+            self._pending = asyncio.create_task(_next_event(self.source))
+        return self._pending
+
+    def consume(self, task: asyncio.Task[SpeechEvent]) -> SpeechEvent:
+        if task is not self._pending:
+            raise RuntimeError("Speech event task does not belong to this cursor")
+        try:
+            return task.result()
+        finally:
+            self._pending = None
+
+    async def close(self) -> None:
+        pending = self._pending
+        self._pending = None
+        if pending is not None:
+            if not pending.done():
+                pending.cancel()
+            with suppress(asyncio.CancelledError, StopAsyncIteration):
+                await pending
+        close = getattr(self.source, "aclose", None)
+        if close is not None:
+            with suppress(asyncio.CancelledError, RuntimeError):
+                await close()
+
+
 class ConversationRunner:
     def __init__(
         self,
@@ -86,6 +120,7 @@ class ConversationRunner:
         self._stop_requested.clear()
         consented = False
         recording_started = False
+        speech_events: SpeechEventCursor | None = None
         try:
             session = await self.repository.get(session_id)
             if session is None:
@@ -120,9 +155,11 @@ class ConversationRunner:
                 max_chars=self.stt_context_max_chars,
                 keyword_limit=self.stt_keyword_limit,
             )
-            speech_events = self.stt.transcribe(
-                self.audio.candidate_audio(),
-                hints=transcription_hints,
+            speech_events = SpeechEventCursor(
+                self.stt.transcribe(
+                    self.audio.candidate_audio(),
+                    hints=transcription_hints,
+                )
             )
             consent_text = await self._obtain_consent(speech_events)
             decision = classify_consent(consent_text)
@@ -175,13 +212,16 @@ class ConversationRunner:
         except Exception as exc:
             await self.repository.fail(session_id, FailureCode.INTERNAL_ERROR, str(exc)[:500])
         finally:
+            if speech_events is not None:
+                with suppress(Exception):
+                    await speech_events.close()
             if recording_started:
                 with suppress(Exception):
                     await self.audio.stop_recording()
             with suppress(Exception):
                 await self.meet.leave()
 
-    async def _obtain_consent(self, events: AsyncIterator[SpeechEvent]) -> str:
+    async def _obtain_consent(self, events: SpeechEventCursor) -> str:
         prompt = CONSENT_DISCLOSURE
         for attempt in range(2):
             response = await self._say_and_receive(
@@ -202,7 +242,7 @@ class ConversationRunner:
         self,
         session: Session,
         plan: str,
-        events: AsyncIterator[SpeechEvent],
+        events: SpeechEventCursor,
         consent_text: str,
     ) -> list[Utterance]:
         duration_minutes = session.duration_minutes
@@ -269,12 +309,13 @@ class ConversationRunner:
     async def _say_and_receive(
         self,
         text: str,
-        events: AsyncIterator[SpeechEvent],
+        events: SpeechEventCursor | AsyncIterator[SpeechEvent],
         *,
         timeout_seconds: float,
     ) -> str:
+        cursor = events if isinstance(events, SpeechEventCursor) else SpeechEventCursor(events)
+        owns_cursor = cursor is not events
         playback = asyncio.create_task(self.audio.play_bot_audio(self.tts.synthesize(text)))
-        event_task: asyncio.Task[SpeechEvent] | None = None
         playback_deadline = time.monotonic() + self.tts_timeout_seconds
         response_deadline: float | None = None
         completion_deadline: float | None = None
@@ -288,8 +329,7 @@ class ConversationRunner:
                     if not playback.cancelled():
                         playback.result()
                     response_deadline = time.monotonic() + timeout_seconds
-                if event_task is None:
-                    event_task = asyncio.create_task(_next_event(events))
+                event_task = cursor.next_task()
                 waiting: set[asyncio.Task[object]] = {event_task}
                 if response_deadline is None:
                     waiting.add(playback)
@@ -315,8 +355,7 @@ class ConversationRunner:
                         raise TimeoutError("Timed out playing interviewer speech")
                     raise TimeoutError("Timed out waiting for candidate speech")
                 if event_task in done:
-                    event = event_task.result()
-                    event_task = None
+                    event = cursor.consume(event_task)
                     if event.kind is SpeechEventKind.SPEECH_STARTED:
                         if not playback.done():
                             await self._stop_playback(playback)
@@ -347,13 +386,13 @@ class ConversationRunner:
                     if response_deadline is None:
                         response_deadline = time.monotonic() + timeout_seconds
         finally:
-            if event_task is not None and not event_task.done():
-                event_task.cancel()
             if not playback.done():
                 await self.audio.stop_bot_audio()
                 playback.cancel()
             with suppress(asyncio.CancelledError):
                 await playback
+            if owns_cursor:
+                await cursor.close()
 
     async def _stop_playback(self, playback: asyncio.Task[None]) -> None:
         await self.audio.stop_bot_audio()

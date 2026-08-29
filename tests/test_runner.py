@@ -13,7 +13,7 @@ from voice_interviewer.domain import (
     SpeechEventKind,
 )
 from voice_interviewer.persistence import SqlAlchemySessionRepository
-from voice_interviewer.runner import ConversationRunner
+from voice_interviewer.runner import ConversationRunner, SpeechEventCursor
 
 
 async def prepare(
@@ -246,6 +246,54 @@ async def test_response_timeout_starts_after_playback_finishes(tmp_path: Path) -
     )
 
     assert response == "A complete answer"
+    await repository.close()
+
+
+async def test_pending_stt_read_is_reused_across_consecutive_turns(tmp_path: Path) -> None:
+    _session, repository, artifacts = await prepare(tmp_path)
+
+    async def consecutive_answers() -> AsyncIterator[SpeechEvent]:
+        yield SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yes, I consent")
+        await asyncio.sleep(0.08)
+        yield SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "My backend answer")
+        await asyncio.Event().wait()
+
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(),
+        audio=FakeAudio(),
+        stt=FakeSTT([]),
+        interviewer=FakeInterviewer(),
+        tts=FakeTTS(),
+        admission_timeout_seconds=1,
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=0.2,
+        candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0.02,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=0,
+        stt_keyword_limit=0,
+        transcript_clarification_attempts=0,
+    )
+    cursor = SpeechEventCursor(consecutive_answers())
+    try:
+        consent = await runner._say_and_receive(
+            "Do you consent?",
+            cursor,
+            timeout_seconds=0.2,
+        )
+        answer = await runner._say_and_receive(
+            "Tell me about your backend work.",
+            cursor,
+            timeout_seconds=0.2,
+        )
+    finally:
+        await cursor.close()
+
+    assert consent == "Yes, I consent"
+    assert answer == "My backend answer"
     await repository.close()
 
 

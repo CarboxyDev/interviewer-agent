@@ -41,7 +41,8 @@ explicit consent.
 Only completed STT utterances enter the LLM context. Resume and role text produce a bounded STT
 prompt and a capped keyword list, improving recognition of names and technical terms without
 changing the cascade. Completed Realtime items are correlated by `item_id` and duplicates are
-discarded.
+discarded. One cursor owns the persistent Realtime event iterator for the whole interview. A
+pending read is carried into the next conversation turn instead of starting an overlapping read.
 
 The live transcription model does not provide a dependable confidence score, so the service does
 not invent one. It uses conservative deterministic checks for empty, inaudible, or obviously
