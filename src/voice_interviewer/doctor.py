@@ -5,17 +5,19 @@ import shutil
 from pathlib import Path
 
 from openai import AsyncOpenAI
-from playwright.async_api import async_playwright
 
 from voice_interviewer.config import Settings
+from voice_interviewer.meet import PlaywrightMeetTransport
 
 
 async def run_checks(settings: Settings, *, live: bool = False) -> dict[str, object]:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
+    settings.browser_profile_dir.mkdir(parents=True, exist_ok=True)
     checks: dict[str, object] = {
         "openai_api_key": bool(settings.openai_api_key),
         "data_directory": _writable(settings.data_dir),
-        "chromium": await _chromium_available(headless=settings.headless),
+        "browser_profile_directory": _writable(settings.browser_profile_dir),
+        "browser": await _browser_available(settings),
         "ffmpeg": shutil.which("ffmpeg") is not None,
         "pulseaudio_tools": all(shutil.which(command) for command in ("pactl", "parec", "pacat")),
     }
@@ -52,12 +54,18 @@ async def _audio_sinks_available() -> bool:
     return process.returncode == 0 and "meet_output" in text and "bot_microphone" in text
 
 
-async def _chromium_available(*, headless: bool) -> bool:
+async def _browser_available(settings: Settings) -> bool:
+    transport = PlaywrightMeetTransport(
+        headless=settings.headless,
+        profile_dir=settings.browser_profile_dir / "doctor",
+        connection_mode=settings.browser_connection_mode,
+        cdp_port=settings.browser_cdp_port,
+        browser_channel=settings.browser_channel,
+        browser_executable_path=settings.browser_executable_path,
+    )
     try:
-        async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=headless)
-            await browser.close()
-            return True
+        await transport.probe()
+        return True
     except Exception:
         return False
 

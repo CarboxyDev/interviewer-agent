@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     transcript_clarification_attempts: int = Field(default=1, ge=0, le=3)
 
     headless: bool = False
+    browser_profile_dir: Path = Path("data/browser-profile")
+    browser_connection_mode: Literal["cdp", "playwright"] = "cdp"
+    browser_cdp_port: int = Field(default=9222, ge=1024, le=65535)
+    browser_channel: str | None = None
+    browser_executable_path: Path | None = None
     participant_timeout_seconds: int = Field(default=300, ge=30, le=900)
     consent_timeout_seconds: int = Field(default=120, ge=30, le=300)
     response_timeout_seconds: int = Field(default=20, ge=5, le=60)

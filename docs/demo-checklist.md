@@ -8,6 +8,7 @@
 - [ ] Run `docker compose build`.
 - [ ] Run `docker compose up -d`.
 - [ ] Run `docker compose exec interviewer voice-interviewer doctor --live`.
+- [ ] Confirm Doctor reports Chrome, the persistent browser profile, and both audio sinks as ready.
 - [ ] Complete one private rehearsal using two devices and no real candidate data.
 - [ ] Keep `INTERVIEWER_REASONING_EFFORT=none` for the baseline cost and latency rehearsal.
 - [ ] Repeat the same rehearsal with `low` only if comparing reasoning quality.
@@ -33,6 +34,7 @@ docker compose exec interviewer voice-interviewer interview start \
 ```
 
 - [ ] Confirm the guest appears as `AI Interviewer` without an admission request.
+- [ ] If the guest is denied before the name screen, stop and do not retry for at least five minutes.
 - [ ] Confirm it starts with disclosure and a consent question.
 - [ ] Confirm no audio file exists before the candidate says yes.
 - [ ] Interrupt one bot question and confirm playback stops promptly.

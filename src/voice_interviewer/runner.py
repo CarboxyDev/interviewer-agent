@@ -261,7 +261,7 @@ class ConversationRunner:
         text: str,
         events: AsyncIterator[SpeechEvent],
         *,
-        timeout_seconds: int,
+        timeout_seconds: float,
     ) -> str:
         playback = asyncio.create_task(self.audio.play_bot_audio(self.tts.synthesize(text)))
         event_task: asyncio.Task[SpeechEvent] | None = None

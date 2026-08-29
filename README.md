@@ -15,7 +15,9 @@ session metadata, and evidence-based notes.
 
 ## Quick start
 
-Requirements: Docker Desktop, an OpenAI API key, and a fresh Google Meet owned by you.
+Requirements: Docker Desktop, an OpenAI API key, and a fresh Google Meet owned by you. The Docker
+image installs official Google Chrome Stable for its native `amd64` or `arm64` architecture and
+controls it through Playwright over a loopback-only CDP endpoint.
 
 ```bash
 cp .env.example .env
@@ -97,5 +99,5 @@ developer documentation, not a custom product UI.
 
 The domain, API, CLI, persistence, document extraction, safe Meet admission, provider contracts,
 and Docker audio environment are implemented independently. A real interview is deliberately
-blocked unless readiness checks pass. Google Meet DOM changes can require selector maintenance,
-so the live demo checklist includes a required feasibility rehearsal.
+blocked unless readiness checks pass. Google Meet can refuse an automated guest before admission,
+and its DOM can change, so the live demo checklist includes a required feasibility rehearsal.

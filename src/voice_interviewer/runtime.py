@@ -46,6 +46,7 @@ class Runtime:
     async def initialize(self) -> None:
         self.settings.data_dir.mkdir(parents=True, exist_ok=True)
         self.settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        self.settings.browser_profile_dir.mkdir(parents=True, exist_ok=True)
         await self.repository.initialize()
         await self.repository.fail_interrupted()
 
@@ -66,7 +67,14 @@ def build_runtime(settings: Settings | None = None) -> Runtime:
         runner = ConversationRunner(
             repository=repository,
             artifacts=artifacts,
-            meet=PlaywrightMeetTransport(headless=configured.headless),
+            meet=PlaywrightMeetTransport(
+                headless=configured.headless,
+                profile_dir=configured.browser_profile_dir,
+                connection_mode=configured.browser_connection_mode,
+                cdp_port=configured.browser_cdp_port,
+                browser_channel=configured.browser_channel,
+                browser_executable_path=configured.browser_executable_path,
+            ),
             audio=PulseAudioRouter(),
             stt=OpenAIRealtimeTranscriber(
                 configured.openai_api_key,

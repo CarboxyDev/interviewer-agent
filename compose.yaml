@@ -10,6 +10,9 @@ services:
       INTERVIEWER_DATABASE_URL: sqlite+aiosqlite:////app/data/interviewer.db
       INTERVIEWER_HOST: 0.0.0.0
       INTERVIEWER_HEADLESS: "false"
+      INTERVIEWER_BROWSER_PROFILE_DIR: /app/data/browser-profile
+      INTERVIEWER_BROWSER_CONNECTION_MODE: cdp
+      INTERVIEWER_BROWSER_EXECUTABLE_PATH: /usr/bin/google-chrome
     ports:
       - "8000:8000"
     volumes:
