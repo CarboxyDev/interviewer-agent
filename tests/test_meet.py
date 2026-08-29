@@ -5,6 +5,7 @@ import pytest
 from voice_interviewer.domain import FailureCode
 from voice_interviewer.errors import InterviewerError
 from voice_interviewer.meet import (
+    JOIN_BUTTON_TEXT,
     MeetingAttemptLimiter,
     chromium_cdp_args,
     compact_page_text,
@@ -12,6 +13,11 @@ from voice_interviewer.meet import (
     participant_count_from_labels,
     remove_browser_singleton_locks,
 )
+
+
+@pytest.mark.parametrize("label", ["Join now", "Rejoin"])
+def test_join_button_pattern_accepts_normal_meet_controls(label: str) -> None:
+    assert JOIN_BUTTON_TEXT.search(label)
 
 
 def test_cdp_browser_is_loopback_only_and_uses_persistent_profile(tmp_path: Path) -> None:

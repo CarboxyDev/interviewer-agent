@@ -28,6 +28,17 @@ docker compose up -d
 docker compose exec interviewer voice-interviewer doctor --live
 ```
 
+If anonymous guest admission is rejected, use a dedicated spare Google account without automating
+its credentials. The browser desktop is bound to localhost only:
+
+```bash
+docker compose exec interviewer voice-interviewer browser setup
+```
+
+Open `http://127.0.0.1:6080/vnc.html?autoconnect=1`, sign in manually, then stop the setup command
+with `Ctrl+C`. Rename the spare account to `AI Interviewer` before the demo. Never copy a personal
+Chrome profile, inject cookies, or automate password, MFA, CAPTCHA, or Google security prompts.
+
 Create an interview:
 
 ```bash

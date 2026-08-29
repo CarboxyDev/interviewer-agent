@@ -12,10 +12,13 @@ import uvicorn
 from voice_interviewer.api import create_app
 from voice_interviewer.config import Settings
 from voice_interviewer.doctor import is_ready, run_checks
+from voice_interviewer.meet import PlaywrightMeetTransport
 
 app = typer.Typer(no_args_is_help=True, help="Consent-first Google Meet interviewer")
 interview_app = typer.Typer(no_args_is_help=True)
+browser_app = typer.Typer(no_args_is_help=True)
 app.add_typer(interview_app, name="interview")
+app.add_typer(browser_app, name="browser")
 
 
 @app.command()
@@ -43,6 +46,12 @@ def doctor(
         typer.echo(f"{'OK' if passed is True else 'FAIL'}  {name}")
     if not is_ready(checks):
         raise typer.Exit(1)
+
+
+@browser_app.command("setup")
+def setup_browser_profile() -> None:
+    """Open the dedicated Chrome profile for a manual Google sign-in."""
+    asyncio.run(_setup_browser_profile(Settings()))
 
 
 @interview_app.command("start")
@@ -124,6 +133,24 @@ def _show_response(response: httpx.Response) -> None:
         raise typer.Exit(1)
     if response.content:
         typer.echo(json.dumps(response.json(), indent=2))
+
+
+async def _setup_browser_profile(settings: Settings) -> None:
+    transport = PlaywrightMeetTransport(
+        headless=False,
+        profile_dir=settings.browser_profile_dir,
+        connection_mode=settings.browser_connection_mode,
+        cdp_port=settings.browser_cdp_port,
+        browser_channel=settings.browser_channel,
+        browser_executable_path=settings.browser_executable_path,
+    )
+    try:
+        await transport.open_profile_setup()
+        typer.echo("Chrome is ready at http://127.0.0.1:6080/vnc.html?autoconnect=1")
+        typer.echo("Sign in manually, then press Ctrl+C in this terminal.")
+        await asyncio.Event().wait()
+    finally:
+        await transport.leave()
 
 
 if __name__ == "__main__":

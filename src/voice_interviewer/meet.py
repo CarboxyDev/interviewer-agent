@@ -13,11 +13,11 @@ from typing import Literal
 from playwright.async_api import (
     Browser,
     BrowserContext,
+    Locator,
     Page,
     Playwright,
     async_playwright,
 )
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from voice_interviewer.domain import FailureCode
 from voice_interviewer.errors import InterviewerError
@@ -34,6 +34,7 @@ PARTICIPANT_COUNT = re.compile(r"\b(\d+)\s+(?:participant|people|person)", re.IG
 GUEST_NAME_INPUT = (
     'input[placeholder*="name" i], input[aria-label*="name" i], input[name*="name" i]'
 )
+JOIN_BUTTON_TEXT = re.compile(r"join now|rejoin", re.IGNORECASE)
 BROWSER_SINGLETON_FILES = ("SingletonCookie", "SingletonLock", "SingletonSocket")
 
 
@@ -190,17 +191,9 @@ class PlaywrightMeetTransport:
             page = await self._start_browser()
             await page.goto(meeting_url, wait_until="domcontentloaded", timeout=30_000)
             await self._fail_on_guard_page()
-            name = page.locator(GUEST_NAME_INPUT).first
-            try:
-                await name.wait_for(state="visible", timeout=20_000)
-            except PlaywrightTimeoutError as exc:
-                await self._fail_on_guard_page()
-                body = compact_page_text(await page.locator("body").inner_text())
-                raise InterviewerError(
-                    FailureCode.BROWSER_DISCONNECTED,
-                    f"Guest name field was not available. Visible page text: {body}",
-                ) from exc
-            await name.fill(display_name)
+            name = await self._wait_for_prejoin(page)
+            if name is not None:
+                await name.fill(display_name)
             await self._configure_prejoin_media()
 
             ask = page.get_by_role("button", name=re.compile("ask to join", re.I))
@@ -209,7 +202,7 @@ class PlaywrightMeetTransport:
                     FailureCode.MEETING_NOT_OPEN,
                     "Meeting requires admission. Set meeting access to Open and start again later",
                 )
-            join = page.get_by_role("button", name=re.compile("join now", re.I))
+            join = page.get_by_role("button", name=JOIN_BUTTON_TEXT)
             await join.wait_for(state="visible", timeout=15_000)
             await join.click()
             await asyncio.sleep(2)
@@ -233,6 +226,32 @@ class PlaywrightMeetTransport:
             return user_agent
         finally:
             await self.leave()
+
+    async def open_profile_setup(self) -> None:
+        page = await self._start_browser()
+        await page.goto(
+            "https://accounts.google.com/",
+            wait_until="domcontentloaded",
+            timeout=30_000,
+        )
+
+    async def _wait_for_prejoin(self, page: Page) -> Locator | None:
+        name = page.locator(GUEST_NAME_INPUT).first
+        join = page.get_by_role("button", name=JOIN_BUTTON_TEXT)
+        ask = page.get_by_role("button", name=re.compile("ask to join", re.I))
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            await self._fail_on_guard_page()
+            if await name.is_visible():
+                return name
+            if await join.is_visible() or await ask.is_visible():
+                return None
+            await asyncio.sleep(0.25)
+        body = compact_page_text(await page.locator("body").inner_text())
+        raise InterviewerError(
+            FailureCode.BROWSER_DISCONNECTED,
+            f"Meet pre-join controls were not available. Visible page text: {body}",
+        )
 
     async def _start_browser(self) -> Page:
         self.profile_dir.mkdir(parents=True, exist_ok=True)

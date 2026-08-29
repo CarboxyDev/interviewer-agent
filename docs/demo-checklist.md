@@ -8,7 +8,7 @@
 - [ ] Run `docker compose build`.
 - [ ] Run `docker compose up -d`.
 - [ ] Run `docker compose exec interviewer voice-interviewer doctor --live`.
-- [ ] Confirm Doctor reports Chrome, the persistent browser profile, and both audio sinks as ready.
+- [ ] Confirm Doctor reports Chrome, the persistent profile, and all audio devices as ready.
 - [ ] Complete one private rehearsal using two devices and no real candidate data.
 - [ ] Keep `INTERVIEWER_REASONING_EFFORT=none` for the baseline cost and latency rehearsal.
 - [ ] Repeat the same rehearsal with `low` only if comparing reasoning quality.

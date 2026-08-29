@@ -12,9 +12,11 @@ services:
       INTERVIEWER_HEADLESS: "false"
       INTERVIEWER_BROWSER_PROFILE_DIR: /app/data/browser-profile
       INTERVIEWER_BROWSER_CONNECTION_MODE: cdp
+      INTERVIEWER_BROWSER_DESKTOP: "true"
       INTERVIEWER_BROWSER_EXECUTABLE_PATH: /usr/bin/google-chrome
     ports:
       - "8000:8000"
+      - "127.0.0.1:${INTERVIEWER_BROWSER_DESKTOP_PORT:-6080}:6080"
     volumes:
       - ./data:/app/data
       - ./input:/input:ro

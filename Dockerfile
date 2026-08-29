@@ -24,8 +24,11 @@ RUN apt-get update \
         ca-certificates \
         curl \
         ffmpeg \
+        novnc \
         pulseaudio \
         pulseaudio-utils \
+        websockify \
+        x11vnc \
         xvfb \
     && curl -fsSLo /tmp/google-chrome.deb \
         "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_${TARGETARCH}.deb" \

@@ -21,7 +21,7 @@ async def run_checks(settings: Settings, *, live: bool = False) -> dict[str, obj
         "ffmpeg": shutil.which("ffmpeg") is not None,
         "pulseaudio_tools": all(shutil.which(command) for command in ("pactl", "parec", "pacat")),
     }
-    checks["audio_sinks"] = await _audio_sinks_available()
+    checks["audio_devices"] = await _audio_devices_available()
     if live and settings.openai_api_key:
         checks["openai_models"] = await _models_available(settings)
     return checks
@@ -35,11 +35,11 @@ def _writable(path: Path) -> bool:
     return path.exists() and path.is_dir() and bool(path.stat().st_mode & 0o200)
 
 
-async def _audio_sinks_available() -> bool:
+async def _audio_devices_available() -> bool:
     if shutil.which("pactl") is None:
         return False
     try:
-        process = await asyncio.create_subprocess_exec(
+        sinks_process = await asyncio.create_subprocess_exec(
             "pactl",
             "list",
             "short",
@@ -47,11 +47,30 @@ async def _audio_sinks_available() -> bool:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        output, _ = await asyncio.wait_for(process.communicate(), timeout=3)
+        sources_process = await asyncio.create_subprocess_exec(
+            "pactl",
+            "list",
+            "short",
+            "sources",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        (sinks_output, _), (sources_output, _) = await asyncio.wait_for(
+            asyncio.gather(sinks_process.communicate(), sources_process.communicate()),
+            timeout=3,
+        )
     except (OSError, TimeoutError):
         return False
-    text = output.decode("utf-8", errors="replace")
-    return process.returncode == 0 and "meet_output" in text and "bot_microphone" in text
+    sinks = sinks_output.decode("utf-8", errors="replace")
+    sources = sources_output.decode("utf-8", errors="replace")
+    return (
+        sinks_process.returncode == 0
+        and sources_process.returncode == 0
+        and "meet_output" in sinks
+        and "bot_microphone" in sinks
+        and "meet_output.monitor" in sources
+        and "bot_microphone_source" in sources
+    )
 
 
 async def _browser_available(settings: Settings) -> bool:
