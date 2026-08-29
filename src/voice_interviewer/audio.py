@@ -62,9 +62,18 @@ class PulseAudioRouter:
                     await process.stdin.drain()
                 except (BrokenPipeError, ConnectionResetError):
                     break
+                except RuntimeError:
+                    if self._playback is not process:
+                        break
+                    raise
             if process.returncode is None and process.stdin.can_write_eof():
-                with suppress(BrokenPipeError, ConnectionResetError):
+                try:
                     process.stdin.write_eof()
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+                except RuntimeError:
+                    if self._playback is process:
+                        raise
             await process.wait()
             error = await self._read_error(process)
             if process.returncode and self._playback is process:
