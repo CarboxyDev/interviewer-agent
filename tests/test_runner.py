@@ -5,7 +5,12 @@ from pathlib import Path
 
 from tests.fakes import FakeAudio, FakeInterviewer, FakeMeet, FakeSTT, FakeTTS
 from voice_interviewer.artifacts import FilesystemArtifactStore
-from voice_interviewer.conversation import INTERVIEW_CLOSING, INTERVIEW_OPENING
+from voice_interviewer.conversation import (
+    CONSENT_DECLINED_CLOSING,
+    CONSENT_WITHDRAWAL_CLOSING,
+    INTERVIEW_CLOSING,
+    INTERVIEW_OPENING,
+)
 from voice_interviewer.domain import (
     JoinOutcome,
     Session,
@@ -111,6 +116,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
 
 async def test_runner_deletes_content_when_consent_declined(tmp_path: Path) -> None:
     session, repository, artifacts = await prepare(tmp_path)
+    tts = FakeTTS()
     runner = ConversationRunner(
         repository=repository,
         artifacts=artifacts,
@@ -118,7 +124,7 @@ async def test_runner_deletes_content_when_consent_declined(tmp_path: Path) -> N
         audio=FakeAudio(),
         stt=FakeSTT([SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "No, I decline")]),
         interviewer=FakeInterviewer(),
-        tts=FakeTTS(),
+        tts=tts,
         admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
@@ -136,11 +142,13 @@ async def test_runner_deletes_content_when_consent_declined(tmp_path: Path) -> N
     assert declined.state is SessionState.STOPPED
     assert declined.consented_at is None
     assert not artifacts.session_dir(str(session.id)).exists()
+    assert tts.spoken[-1] == CONSENT_DECLINED_CLOSING
     await repository.close()
 
 
 async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) -> None:
     session, repository, artifacts = await prepare(tmp_path)
+    tts = FakeTTS()
     runner = ConversationRunner(
         repository=repository,
         artifacts=artifacts,
@@ -153,7 +161,7 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
             ]
         ),
         interviewer=FakeInterviewer(),
-        tts=FakeTTS(),
+        tts=tts,
         admission_timeout_seconds=1,
         participant_timeout_seconds=1,
         consent_timeout_seconds=1,
@@ -170,6 +178,7 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
     assert withdrawn is not None
     assert withdrawn.state is SessionState.STOPPED
     assert not artifacts.session_dir(str(session.id)).exists()
+    assert tts.spoken[-1] == CONSENT_WITHDRAWAL_CLOSING
     await repository.close()
 
 

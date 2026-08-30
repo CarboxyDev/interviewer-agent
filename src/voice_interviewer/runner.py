@@ -6,7 +6,9 @@ from collections.abc import AsyncIterator
 from contextlib import suppress
 
 from voice_interviewer.conversation import (
+    CONSENT_DECLINED_CLOSING,
     CONSENT_DISCLOSURE,
+    CONSENT_WITHDRAWAL_CLOSING,
     INTERVIEW_CLOSING,
     INTERVIEW_OPENING,
     build_transcription_hints,
@@ -167,6 +169,8 @@ class ConversationRunner:
             decision = classify_consent(consent_text)
             if decision is not ConsentDecision.GRANTED:
                 await self.artifacts.delete_content(session_id)
+                with suppress(Exception):
+                    await self._play_with_timeout(CONSENT_DECLINED_CLOSING)
                 await self.repository.transition(
                     session_id,
                     SessionState.STOPPED,
@@ -201,6 +205,8 @@ class ConversationRunner:
                     await self.audio.stop_recording()
                 recording_started = False
             await self.artifacts.delete_content(session_id)
+            with suppress(Exception):
+                await self._play_with_timeout(CONSENT_WITHDRAWAL_CLOSING)
             await self.repository.transition(
                 session_id,
                 SessionState.STOPPED,
@@ -237,7 +243,8 @@ class ConversationRunner:
                 return response
             if attempt == 0:
                 prompt = (
-                    "I need an explicit yes or no. Do you consent to recording and transcription?"
+                    "Sorry, I need a clear yes or no before we continue. Is it okay if I record "
+                    "this interview and create a transcript?"
                 )
         return response
 

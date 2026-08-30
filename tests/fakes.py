@@ -143,7 +143,11 @@ class FakeInterviewer:
 
 
 class FakeTTS:
+    def __init__(self) -> None:
+        self.spoken: list[str] = []
+
     async def synthesize(self, text: str) -> AsyncIterator[bytes]:
+        self.spoken.append(text)
         for _ in range(5):
             yield b"\x00\x00" * 100
             await asyncio.sleep(0.001)

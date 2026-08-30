@@ -5,9 +5,18 @@ import re
 from voice_interviewer.domain import ConsentDecision, TranscriptionHints
 
 CONSENT_DISCLOSURE = (
-    "Hello, I am an AI interviewer. I would like to conduct this interview and record the audio "
-    "and transcript for review. You can stop at any time. Do you explicitly consent to recording "
-    "and transcription? Please answer yes or no."
+    "Hello, I am an AI interviewer. Before we begin, is it okay if I record this conversation "
+    "and create a transcript for review? You can ask me to stop at any time. Please say yes or no."
+)
+
+CONSENT_DECLINED_CLOSING = (
+    "No problem. I will not record anything. Thank you for your time, and you may leave the "
+    "meeting whenever you are ready."
+)
+
+CONSENT_WITHDRAWAL_CLOSING = (
+    "Of course. I have stopped the interview and recording. Thank you for your time, and you may "
+    "leave the meeting whenever you are ready."
 )
 
 INTERVIEW_OPENING = (
