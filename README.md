@@ -77,6 +77,16 @@ LLM, and TTS pipeline with isolated input and output audio.
 More detail is available in the [architecture](docs/architecture.md),
 [product requirements](docs/PRD.md), and [configuration](docs/configuration.md) documents.
 
+## Default models
+
+| Stage | Default |
+| --- | --- |
+| Speech-to-text | `gpt-transcribe` |
+| Interviewer LLM | `gpt-5.6-luna`, reasoning `none` |
+| Text-to-speech | `gpt-4o-mini-tts`, voice `cedar` |
+
+All model and pipeline settings can be changed through environment configuration.
+
 ## Local development
 
 ```bash
