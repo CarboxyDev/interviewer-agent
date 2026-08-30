@@ -101,6 +101,15 @@ THINKING_REQUEST_PATTERNS = (
     r"i(?:'m| am) thinking",
     r"hold on(?: a (?:moment|second))?",
     r"h+m+",
+    r"(?:well|so|basically|actually|i guess|i think|i basically)",
+)
+REPEAT_REQUEST_PATTERNS = (
+    r"(?:sorry )?(?:can|could|would) you (?:please )?repeat(?: that| the question| yourself)?",
+    r"(?:please )?repeat(?: that| the question| yourself)?",
+    r"(?:sorry )?say that again(?: please)?",
+    r"i (?:didn't|did not|couldn't|could not) (?:hear|catch|understand) "
+    r"(?:that|the question|you)",
+    r"what was the question(?: again)?",
 )
 KEYWORD_PATTERN = re.compile(r"\b[A-Za-z][A-Za-z0-9.+#/-]{2,49}\b")
 KEYWORD_STOP_WORDS = {
@@ -210,6 +219,17 @@ def transcript_needs_clarification(text: str) -> bool:
 def is_thinking_request(text: str) -> bool:
     normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
     return any(re.fullmatch(pattern, normalized) for pattern in THINKING_REQUEST_PATTERNS)
+
+
+def is_repeat_request(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    return any(re.fullmatch(pattern, normalized) for pattern in REPEAT_REQUEST_PATTERNS)
+
+
+def repeat_prompt(text: str) -> str:
+    sentences = [item.strip() for item in re.split(r"(?<=[.!?])\s+", text.strip()) if item.strip()]
+    final_sentence = sentences[-1] if sentences else text.strip()
+    return f"Of course. {final_sentence}"
 
 
 def build_transcription_hints(

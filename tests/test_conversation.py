@@ -4,7 +4,9 @@ from voice_interviewer.conversation import (
     contains_protected_question,
     interview_opening,
     is_consent_withdrawal,
+    is_repeat_request,
     is_thinking_request,
+    repeat_prompt,
     transcript_needs_clarification,
 )
 from voice_interviewer.domain import ConsentDecision
@@ -67,5 +69,15 @@ def test_short_thinking_requests_are_not_complete_answers() -> None:
     assert is_thinking_request("Let me think")
     assert is_thinking_request("Give me a moment, please")
     assert is_thinking_request("Could I have a second?")
+    assert is_thinking_request("I basically")
     assert not is_thinking_request("Let me think through how I used Kafka for delivery")
     assert not is_thinking_request("I think we used idempotency keys")
+
+
+def test_repeat_requests_are_recognized_and_question_is_replayed_naturally() -> None:
+    assert is_repeat_request("Sorry, can you repeat?")
+    assert is_repeat_request("I didn't catch that")
+    assert not is_repeat_request("I repeated the database query")
+    assert repeat_prompt("You mentioned caching. How did invalidation work?") == (
+        "Of course. How did invalidation work?"
+    )

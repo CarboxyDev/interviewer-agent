@@ -14,7 +14,9 @@ from voice_interviewer.conversation import (
     classify_consent,
     interview_opening,
     is_consent_withdrawal,
+    is_repeat_request,
     is_thinking_request,
+    repeat_prompt,
     transcript_needs_clarification,
 )
 from voice_interviewer.documents import extract_document
@@ -305,9 +307,27 @@ class ConversationRunner:
             timeout_seconds=self.response_timeout_seconds,
         )
         opening_ended = int((time.monotonic() - started) * 1000)
+        (
+            opening_response,
+            opening_response_started,
+            opening_ended,
+        ) = await self._honor_repeat_requests(
+            response=opening_response,
+            prompt=opening,
+            events=events,
+            transcript=transcript,
+            interview_started=started,
+            response_started=opening_started,
+            response_ended=opening_ended,
+        )
         self._raise_if_consent_withdrawn(opening_response)
         transcript.append(
-            Utterance(Speaker.CANDIDATE, opening_response, opening_started, opening_ended)
+            Utterance(
+                Speaker.CANDIDATE,
+                opening_response,
+                opening_response_started,
+                opening_ended,
+            )
         )
         for _ in range(self.transcript_clarification_attempts):
             if not transcript_needs_clarification(opening_response):
@@ -330,12 +350,21 @@ class ConversationRunner:
                 timeout_seconds=self.response_timeout_seconds,
             )
             opening_ended = int((time.monotonic() - started) * 1000)
+            opening_response, response_started, opening_ended = await self._honor_repeat_requests(
+                response=opening_response,
+                prompt=clarification,
+                events=events,
+                transcript=transcript,
+                interview_started=started,
+                response_started=clarification_started,
+                response_ended=opening_ended,
+            )
             self._raise_if_consent_withdrawn(opening_response)
             transcript.append(
                 Utterance(
                     Speaker.CANDIDATE,
                     opening_response,
-                    clarification_started,
+                    response_started,
                     opening_ended,
                 )
             )
@@ -359,8 +388,19 @@ class ConversationRunner:
                 timeout_seconds=self.response_timeout_seconds,
             )
             response_ended = int((time.monotonic() - started) * 1000)
+            response, response_started, response_ended = await self._honor_repeat_requests(
+                response=response,
+                prompt=turn.say,
+                events=events,
+                transcript=transcript,
+                interview_started=started,
+                response_started=turn_started,
+                response_ended=response_ended,
+            )
             self._raise_if_consent_withdrawn(response)
-            transcript.append(Utterance(Speaker.CANDIDATE, response, turn_started, response_ended))
+            transcript.append(
+                Utterance(Speaker.CANDIDATE, response, response_started, response_ended)
+            )
             for _ in range(self.transcript_clarification_attempts):
                 if not transcript_needs_clarification(response):
                     break
@@ -382,12 +422,21 @@ class ConversationRunner:
                     timeout_seconds=self.response_timeout_seconds,
                 )
                 response_ended = int((time.monotonic() - started) * 1000)
+                response, response_started, response_ended = await self._honor_repeat_requests(
+                    response=response,
+                    prompt=clarification,
+                    events=events,
+                    transcript=transcript,
+                    interview_started=started,
+                    response_started=clarification_started,
+                    response_ended=response_ended,
+                )
                 self._raise_if_consent_withdrawn(response)
                 transcript.append(
                     Utterance(
                         Speaker.CANDIDATE,
                         response,
-                        clarification_started,
+                        response_started,
                         response_ended,
                     )
                 )
@@ -397,6 +446,43 @@ class ConversationRunner:
         )
         await self._play_with_timeout(INTERVIEW_CLOSING)
         self._raise_if_stopped()
+
+    async def _honor_repeat_requests(
+        self,
+        *,
+        response: str,
+        prompt: str,
+        events: SpeechEventCursor,
+        transcript: list[Utterance],
+        interview_started: float,
+        response_started: int,
+        response_ended: int,
+    ) -> tuple[str, int, int]:
+        for _ in range(2):
+            if not is_repeat_request(response):
+                break
+            self._raise_if_consent_withdrawn(response)
+            transcript.append(
+                Utterance(Speaker.CANDIDATE, response, response_started, response_ended)
+            )
+            repeated = repeat_prompt(prompt)
+            repeated_started = int((time.monotonic() - interview_started) * 1000)
+            transcript.append(
+                Utterance(
+                    Speaker.INTERVIEWER,
+                    repeated,
+                    repeated_started,
+                    repeated_started,
+                )
+            )
+            response = await self._say_and_receive(
+                repeated,
+                events,
+                timeout_seconds=self.response_timeout_seconds,
+            )
+            response_started = repeated_started
+            response_ended = int((time.monotonic() - interview_started) * 1000)
+        return response, response_started, response_ended
 
     async def _say_and_receive(
         self,

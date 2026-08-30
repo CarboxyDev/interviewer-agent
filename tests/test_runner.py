@@ -70,6 +70,8 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
                     "I currently build backend APIs and data pipelines.",
                 ),
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
+                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Sorry, can you repeat?"),
+                SpeechEvent(SpeechEventKind.SPEECH_STARTED),
                 SpeechEvent(
                     SpeechEventKind.FINAL_TRANSCRIPT,
                     "I designed a versioned FastAPI service.",
@@ -102,6 +104,9 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     assert utterances[2]["text"] == interview_opening(5)
     assert utterances[3]["text"] == (
         "Let me think I currently build backend APIs and data pipelines."
+    )
+    assert any(
+        item["text"] == "Of course. Tell me about an API you designed." for item in utterances
     )
     assert utterances[-1]["text"] == INTERVIEW_CLOSING
     assert not any(
