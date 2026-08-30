@@ -63,6 +63,8 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
                 SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yes, I consent"),
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
+                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Let me think"),
+                SpeechEvent(SpeechEventKind.SPEECH_STARTED),
                 SpeechEvent(
                     SpeechEventKind.FINAL_TRANSCRIPT,
                     "I currently build backend APIs and data pipelines.",
@@ -98,6 +100,9 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     transcript_path = artifacts.session_dir(str(session.id)) / "transcript.json"
     utterances = json.loads(transcript_path.read_text())
     assert utterances[2]["text"] == interview_opening(5)
+    assert utterances[3]["text"] == (
+        "Let me think I currently build backend APIs and data pipelines."
+    )
     assert utterances[-1]["text"] == INTERVIEW_CLOSING
     assert not any(
         item["text"] == "What if the external call succeeded but the database write failed?"

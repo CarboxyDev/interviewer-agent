@@ -4,6 +4,7 @@ from voice_interviewer.conversation import (
     contains_protected_question,
     interview_opening,
     is_consent_withdrawal,
+    is_thinking_request,
     transcript_needs_clarification,
 )
 from voice_interviewer.domain import ConsentDecision
@@ -60,3 +61,11 @@ def test_unclear_transcript_detection_is_conservative() -> None:
     assert transcript_needs_clarification("the the the the")
     assert not transcript_needs_clarification("Yes")
     assert not transcript_needs_clarification("I used Kafka for event delivery.")
+
+
+def test_short_thinking_requests_are_not_complete_answers() -> None:
+    assert is_thinking_request("Let me think")
+    assert is_thinking_request("Give me a moment, please")
+    assert is_thinking_request("Could I have a second?")
+    assert not is_thinking_request("Let me think through how I used Kafka for delivery")
+    assert not is_thinking_request("I think we used idempotency keys")

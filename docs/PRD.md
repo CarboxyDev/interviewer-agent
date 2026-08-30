@@ -36,9 +36,10 @@ initiate a natural interview, and save consented outputs locally.
 8. Split broad design exercises into progressive questions about individual decisions.
 9. Narrow once or change topics when the candidate says they do not know or finds a task difficult
    to answer verbally.
-10. Treat the requested duration as a soft target. Finish the current answer before closing.
-11. Always play a deterministic closing statement before stopping recording and leaving.
-12. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
+10. Treat a short request to think as a pause, not a completed answer, and keep waiting.
+11. Treat the requested duration as a soft target. Finish the current answer before closing.
+12. Always play a deterministic closing statement before stopping recording and leaving.
+13. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
 
 ## Outputs
 

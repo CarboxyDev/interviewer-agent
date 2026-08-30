@@ -14,6 +14,7 @@ from voice_interviewer.conversation import (
     classify_consent,
     interview_opening,
     is_consent_withdrawal,
+    is_thinking_request,
     transcript_needs_clarification,
 )
 from voice_interviewer.documents import extract_document
@@ -461,6 +462,14 @@ class ConversationRunner:
                             await self._stop_playback(playback)
                         if not transcript_fragments or transcript_fragments[-1] != event.text:
                             transcript_fragments.append(event.text)
+                        if is_thinking_request(" ".join(transcript_fragments)):
+                            speech_active = False
+                            active_item_id = None
+                            response_deadline = (
+                                time.monotonic() + self.candidate_turn_timeout_seconds
+                            )
+                            completion_deadline = None
+                            continue
                         closes_active_item = (
                             not speech_active
                             or active_item_id is None

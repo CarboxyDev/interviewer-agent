@@ -93,6 +93,15 @@ UNCLEAR_TRANSCRIPT_PATTERNS = (
     r"\((?:inaudible|unintelligible|unclear)\)",
     r"\b(?:inaudible|unintelligible)\b",
 )
+THINKING_REQUEST_PATTERNS = (
+    r"let me (?:think|consider that)(?: for a (?:moment|second|minute))?",
+    r"(?:just )?give me (?:a )?(?:moment|second|minute)(?: please)?",
+    r"(?:can|could) i have (?:a )?(?:moment|second|minute)(?: please)?",
+    r"(?:one|a) (?:moment|second|minute)(?: please)?",
+    r"i(?:'m| am) thinking",
+    r"hold on(?: a (?:moment|second))?",
+    r"h+m+",
+)
 KEYWORD_PATTERN = re.compile(r"\b[A-Za-z][A-Za-z0-9.+#/-]{2,49}\b")
 KEYWORD_STOP_WORDS = {
     "all",
@@ -196,6 +205,11 @@ def transcript_needs_clarification(text: str) -> bool:
         words[index] == words[index + 1] == words[index + 2] == words[index + 3]
         for index in range(max(0, len(words) - 3))
     )
+
+
+def is_thinking_request(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    return any(re.fullmatch(pattern, normalized) for pattern in THINKING_REQUEST_PATTERNS)
 
 
 def build_transcription_hints(
