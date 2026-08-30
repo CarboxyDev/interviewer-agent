@@ -19,17 +19,21 @@ CONSENT_WITHDRAWAL_CLOSING = (
     "leave the meeting whenever you are ready."
 )
 
-INTERVIEW_OPENING = (
-    "Thank you. I will begin with a brief overview, then ask focused questions about your "
-    "backend experience and technical decisions. Please ask me to repeat anything that is "
-    "unclear, and take a moment to think when needed. To start, please give me a brief overview "
-    "of your recent backend work."
-)
-
 INTERVIEW_CLOSING = (
     "Thank you for your time and for sharing your experience. That concludes the interview. "
     "Your responses have been recorded for review, and you may now leave the meeting."
 )
+
+
+def interview_opening(duration_minutes: int) -> str:
+    return (
+        f"Thank you. This interview is planned for about {duration_minutes} minutes. I will begin "
+        "with a brief overview, then ask focused questions about your backend experience and "
+        "technical decisions. Please ask me to repeat anything that is unclear, and take a moment "
+        "to think when needed. To start, please give me a brief overview of your recent backend "
+        "work."
+    )
+
 
 DECLINE_PATTERNS = (
     r"\bno\b",
@@ -37,14 +41,27 @@ DECLINE_PATTERNS = (
     r"\bdon't\b",
     r"\bdecline\b",
     r"\bnot consent\b",
+    r"\bnot (?:okay|ok|fine|comfortable)\b",
+    r"\brather not\b",
+    r"\b(?:object|refuse)\b",
 )
 GRANT_PATTERNS = (
     r"\byes\b",
+    r"\byeah\b",
+    r"\byep\b",
+    r"\byup\b",
+    r"\bok(?:ay)?\b",
     r"\bi consent\b",
     r"\bi agree\b",
     r"\bthat's fine\b",
     r"\bthat is fine\b",
     r"\bsure\b",
+    r"\bgo ahead\b",
+    r"\bsounds good\b",
+    r"\babsolutely\b",
+    r"\bplease do\b",
+    r"\bworks for me\b",
+    r"\bof course\b",
 )
 UNCLEAR_PATTERNS = (
     r"\bnot sure\b",

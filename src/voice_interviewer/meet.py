@@ -384,6 +384,28 @@ class PlaywrightMeetTransport:
             "No other participant appeared before the configured timeout",
         )
 
+    async def participant_present(self) -> bool:
+        page = self._require_page()
+        if page.is_closed():
+            raise InterviewerError(
+                FailureCode.BROWSER_DISCONNECTED,
+                "Google Meet page closed unexpectedly",
+            )
+        await self._fail_on_guard_page()
+        labels = await page.locator("[aria-label]").evaluate_all(
+            "elements => elements.map(element => element.getAttribute('aria-label') || '')"
+        )
+        count = participant_count_from_labels(labels)
+        if count is not None:
+            return count >= 2
+        body = await page.locator("body").inner_text()
+        if re.search(r"you are the only one|no one else is here", body, re.I):
+            return False
+        visible_people = page.locator("[data-participant-id]:visible")
+        if await visible_people.count() >= 2:
+            return True
+        return True
+
     async def leave(self) -> None:
         if self._page is not None and not self._page.is_closed():
             button = self._page.get_by_role("button", name=LEAVE_CALL_TEXT)

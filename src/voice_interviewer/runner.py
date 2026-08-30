@@ -10,9 +10,9 @@ from voice_interviewer.conversation import (
     CONSENT_DISCLOSURE,
     CONSENT_WITHDRAWAL_CLOSING,
     INTERVIEW_CLOSING,
-    INTERVIEW_OPENING,
     build_transcription_hints,
     classify_consent,
+    interview_opening,
     is_consent_withdrawal,
     transcript_needs_clarification,
 )
@@ -20,6 +20,7 @@ from voice_interviewer.documents import extract_document
 from voice_interviewer.domain import (
     ConsentDecision,
     FailureCode,
+    InterviewNotes,
     JoinOutcome,
     Session,
     SessionState,
@@ -28,7 +29,7 @@ from voice_interviewer.domain import (
     SpeechEventKind,
     Utterance,
 )
-from voice_interviewer.errors import ConsentWithdrawnError, InterviewerError
+from voice_interviewer.errors import ConsentWithdrawnError, InterviewerError, ParticipantLeftError
 from voice_interviewer.ports import (
     ArtifactStore,
     AudioRouter,
@@ -125,6 +126,7 @@ class ConversationRunner:
         consented = False
         recording_started = False
         speech_events: SpeechEventCursor | None = None
+        transcript: list[Utterance] = []
         try:
             session = await self.repository.get(session_id)
             if session is None:
@@ -183,7 +185,13 @@ class ConversationRunner:
             await self.audio.start_recording(self.artifacts.session_dir(session_id))
             recording_started = True
             await self.repository.transition(session_id, SessionState.ACTIVE)
-            transcript = await self._conduct_interview(session, plan, speech_events, consent_text)
+            await self._conduct_interview(
+                session,
+                plan,
+                speech_events,
+                consent_text,
+                transcript,
+            )
             await self.repository.transition(session_id, SessionState.FINALIZING)
             await self.audio.stop_recording()
             recording_started = False
@@ -212,6 +220,28 @@ class ConversationRunner:
                 SessionState.STOPPED,
                 detail="Candidate withdrew recording consent",
             )
+        except ParticipantLeftError:
+            if recording_started:
+                with suppress(Exception):
+                    await self.audio.stop_recording()
+                recording_started = False
+            stopped = await self.repository.transition(
+                session_id,
+                SessionState.STOPPED,
+                detail="Candidate left the meeting",
+            )
+            if transcript:
+                try:
+                    notes = await self.interviewer.notes(transcript)
+                except Exception:
+                    notes = InterviewNotes(
+                        summary="The interview ended when the candidate left the meeting.",
+                        strengths_observed=[],
+                        areas_to_probe=["The interview ended before completion."],
+                        evidence=[],
+                    )
+                with suppress(Exception):
+                    await self.artifacts.write_outputs(stopped, transcript, notes)
         except InterviewerError as exc:
             await self.repository.fail(session_id, exc.code, exc.detail)
         except TimeoutError as exc:
@@ -254,20 +284,22 @@ class ConversationRunner:
         plan: str,
         events: SpeechEventCursor,
         consent_text: str,
-    ) -> list[Utterance]:
+        transcript: list[Utterance],
+    ) -> None:
         duration_minutes = session.duration_minutes
-        transcript: list[Utterance] = [
-            Utterance(Speaker.INTERVIEWER, CONSENT_DISCLOSURE, 0, 0),
-            Utterance(Speaker.CANDIDATE, consent_text, 0, 0),
-        ]
+        transcript.extend(
+            [
+                Utterance(Speaker.INTERVIEWER, CONSENT_DISCLOSURE, 0, 0),
+                Utterance(Speaker.CANDIDATE, consent_text, 0, 0),
+            ]
+        )
         started = time.monotonic()
         duration_seconds = duration_minutes * 60
+        opening = interview_opening(duration_minutes)
         opening_started = int((time.monotonic() - started) * 1000)
-        transcript.append(
-            Utterance(Speaker.INTERVIEWER, INTERVIEW_OPENING, opening_started, opening_started)
-        )
+        transcript.append(Utterance(Speaker.INTERVIEWER, opening, opening_started, opening_started))
         opening_response = await self._say_and_receive(
-            INTERVIEW_OPENING,
+            opening,
             events,
             timeout_seconds=self.response_timeout_seconds,
         )
@@ -364,7 +396,6 @@ class ConversationRunner:
         )
         await self._play_with_timeout(INTERVIEW_CLOSING)
         self._raise_if_stopped()
-        return transcript
 
     async def _say_and_receive(
         self,
@@ -402,6 +433,7 @@ class ConversationRunner:
                         return " ".join(transcript_fragments)
                     if response_deadline is None:
                         raise TimeoutError("Timed out playing interviewer speech")
+                    await self._raise_if_participant_left()
                     raise TimeoutError("Timed out waiting for candidate speech")
                 done, _ = await asyncio.wait(
                     waiting,
@@ -413,6 +445,7 @@ class ConversationRunner:
                         return " ".join(transcript_fragments)
                     if response_deadline is None:
                         raise TimeoutError("Timed out playing interviewer speech")
+                    await self._raise_if_participant_left()
                     raise TimeoutError("Timed out waiting for candidate speech")
                 if event_task in done:
                     event = cursor.consume(event_task)
@@ -477,6 +510,10 @@ class ConversationRunner:
     def _raise_if_stopped(self) -> None:
         if self._stop_requested.is_set():
             raise asyncio.CancelledError
+
+    async def _raise_if_participant_left(self) -> None:
+        if not await self.meet.participant_present():
+            raise ParticipantLeftError
 
     async def _stop_session(self, session_id: str) -> None:
         session = await self.repository.get(session_id)

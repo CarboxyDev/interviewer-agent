@@ -9,7 +9,7 @@ from voice_interviewer.conversation import (
     CONSENT_DECLINED_CLOSING,
     CONSENT_WITHDRAWAL_CLOSING,
     INTERVIEW_CLOSING,
-    INTERVIEW_OPENING,
+    interview_opening,
 )
 from voice_interviewer.domain import (
     JoinOutcome,
@@ -97,7 +97,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     assert audio.stops >= 2
     transcript_path = artifacts.session_dir(str(session.id)) / "transcript.json"
     utterances = json.loads(transcript_path.read_text())
-    assert utterances[2]["text"] == INTERVIEW_OPENING
+    assert utterances[2]["text"] == interview_opening(5)
     assert utterances[-1]["text"] == INTERVIEW_CLOSING
     assert not any(
         item["text"] == "What if the external call succeeded but the database write failed?"
@@ -179,6 +179,49 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
     assert withdrawn.state is SessionState.STOPPED
     assert not artifacts.session_dir(str(session.id)).exists()
     assert tts.spoken[-1] == CONSENT_WITHDRAWAL_CLOSING
+    await repository.close()
+
+
+async def test_runner_stops_gracefully_and_keeps_partial_outputs_when_candidate_leaves(
+    tmp_path: Path,
+) -> None:
+    session, repository, artifacts = await prepare(tmp_path)
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(participant_present=False),
+        audio=FakeAudio(),
+        stt=FakeSTT(
+            [SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yeah, go ahead")],
+            hold_open=True,
+        ),
+        interviewer=FakeInterviewer(),
+        tts=FakeTTS(),
+        admission_timeout_seconds=1,
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=0,
+        candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=500,
+        stt_keyword_limit=20,
+        transcript_clarification_attempts=1,
+    )
+
+    await runner.run(str(session.id))
+
+    stopped = await repository.get(str(session.id))
+    assert stopped is not None
+    assert stopped.state is SessionState.STOPPED
+    names = {path.name for path in await artifacts.list(str(session.id))}
+    assert names == {
+        "interview.mp3",
+        "notes.md",
+        "session.json",
+        "transcript.json",
+        "transcript.md",
+    }
     await repository.close()
 
 

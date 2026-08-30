@@ -28,14 +28,17 @@ initiate a natural interview, and save consented outputs locally.
 1. Greet the candidate and disclose that this is an AI-run interview.
 2. Ask for explicit recording and transcription consent.
 3. If consent is declined or unclear, do not record and leave.
-4. After consent, explain the interview format and begin with a short background question.
+4. After consent, state the approximate configured duration, explain the interview format, and
+   begin with a short background question.
 5. Adapt follow-ups to the resume, job description, and prior answers.
-6. Ask one concise, verbally answerable question with one answer target at a time.
-7. Split broad design exercises into progressive questions about individual decisions.
-8. Narrow once or change topics when the candidate says they do not know or finds a task difficult
+6. Briefly acknowledge one concrete detail from the latest answer before each focused question.
+7. Ask one concise, verbally answerable question with one answer target at a time.
+8. Split broad design exercises into progressive questions about individual decisions.
+9. Narrow once or change topics when the candidate says they do not know or finds a task difficult
    to answer verbally.
-9. Treat the requested duration as a soft target. Finish the current answer before closing.
-10. Always play a deterministic closing statement before stopping recording and leaving.
+10. Treat the requested duration as a soft target. Finish the current answer before closing.
+11. Always play a deterministic closing statement before stopping recording and leaving.
+12. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
 
 ## Outputs
 
@@ -64,8 +67,10 @@ initiate a natural interview, and save consented outputs locally.
 - Duplicate completed STT events never become duplicate candidate utterances.
 - Clearly inaudible transcription triggers one configurable repeat request.
 - The post-consent opening explains the format before technical questioning begins.
+- Each generated follow-up starts with a short, neutral acknowledgment of the latest answer.
 - A generated multi-part or oversized spoken question is repaired once, then replaced by a safe
   focused fallback if still invalid.
+- Candidate departure results in `STOPPED`, not `FAILED`, with available partial artifacts.
 - Reaching the target duration never causes a new question or an abrupt exit. The current answer
   receives its configured response window, followed by the deterministic closing statement.
 - Normal responses begin within 3 seconds on a healthy network.

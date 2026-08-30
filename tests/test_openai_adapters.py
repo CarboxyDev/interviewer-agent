@@ -90,7 +90,10 @@ def test_spoken_turn_guard_rejects_bundled_questions() -> None:
         should_end=False,
     )
     focused = NextTurn(
-        say="What was one important backend decision you personally made?",
+        say=(
+            "You mentioned owning the API workflow. What was one important backend decision you "
+            "personally made?"
+        ),
         rationale="Probe one decision.",
         topic="Backend decision",
         should_end=False,
@@ -109,7 +112,10 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
             should_end=False,
         ).model_dump_json(),
         NextTurn(
-            say="What was one important backend decision you personally made?",
+            say=(
+                "You mentioned owning the API workflow. What was one important backend decision "
+                "you personally made?"
+            ),
             rationale="Probe one decision.",
             topic="Backend decision",
             should_end=False,
@@ -138,7 +144,7 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
         seconds_remaining=300,
     )
 
-    assert turn.say == "What was one important backend decision you personally made?"
+    assert turn.say.startswith("You mentioned owning the API workflow.")
     assert len(fake_responses.calls) == 2
     assert "REVISION REQUIRED" in fake_responses.calls[1]["input"]
 

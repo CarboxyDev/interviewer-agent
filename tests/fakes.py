@@ -36,11 +36,17 @@ class HoldingRunner:
 
 
 class FakeMeet:
-    def __init__(self, join_outcome: JoinOutcome = JoinOutcome.JOINED) -> None:
+    def __init__(
+        self,
+        join_outcome: JoinOutcome = JoinOutcome.JOINED,
+        *,
+        participant_present: bool = True,
+    ) -> None:
         self.joined = False
         self.left = False
         self.join_outcome = join_outcome
         self.admission_waited = False
+        self.participant_is_present = participant_present
 
     async def join(self, meeting_url: str, display_name: str) -> JoinOutcome:
         self.joined = meeting_url.endswith("abc-defg-hij") and display_name == "AI Interviewer"
@@ -51,6 +57,9 @@ class FakeMeet:
 
     async def wait_for_participant(self, timeout_seconds: int) -> None:
         return None
+
+    async def participant_present(self) -> bool:
+        return self.participant_is_present
 
     async def leave(self) -> None:
         self.left = True
@@ -85,8 +94,9 @@ class FakeAudio:
 
 
 class FakeSTT:
-    def __init__(self, events: Sequence[SpeechEvent]) -> None:
+    def __init__(self, events: Sequence[SpeechEvent], *, hold_open: bool = False) -> None:
         self.events = events
+        self.hold_open = hold_open
         self.hints: TranscriptionHints | None = None
 
     async def transcribe(
@@ -99,6 +109,8 @@ class FakeSTT:
         for event in self.events:
             yield event
             await asyncio.sleep(0)
+        if self.hold_open:
+            await asyncio.Event().wait()
 
 
 class FakeInterviewer:

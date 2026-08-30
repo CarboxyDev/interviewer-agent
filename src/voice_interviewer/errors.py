@@ -30,3 +30,7 @@ class DocumentError(ValueError):
 
 class ConsentWithdrawnError(RuntimeError):
     pass
+
+
+class ParticipantLeftError(RuntimeError):
+    pass

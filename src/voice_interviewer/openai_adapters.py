@@ -40,7 +40,9 @@ ask about one decision now and use later turns for follow-up. Prefer concrete ex
 progressive depth over trivia or exhaustive cross-examination. Use no more than two follow-ups on
 the same narrow topic unless the candidate is clearly comfortable and adding useful evidence. If
 the candidate says they do not know or that a task is difficult verbally, narrow it once or move to
-another topic. Adapt to the resume, job description, and earlier answers. Cover experience,
+another topic. Before each question, naturally acknowledge one concrete detail from the candidate's
+latest answer in one short, neutral sentence. Avoid generic praise or evaluating the answer. Adapt
+to the resume, job description, and earlier answers. Cover experience,
 technical depth, decisions, tradeoffs, and realistic scenarios across the interview. Never ask
 about age, family status, health, religion, race, ethnicity, sexuality, disability, citizenship, or
 any other protected personal characteristic. Never score the candidate or make a hiring
@@ -58,6 +60,8 @@ def spoken_turn_issue(turn: NextTurn) -> str | None:
         return "The question asks about a protected personal characteristic."
     if text.count("?") != 1 or not text.endswith("?"):
         return "The spoken turn must contain exactly one question ending with one question mark."
+    if "." not in text[: text.index("?")]:
+        return "Begin with one short acknowledgment sentence before the focused question."
     if len(text.split()) > MAX_SPOKEN_QUESTION_WORDS:
         return f"The question exceeds {MAX_SPOKEN_QUESTION_WORDS} spoken words."
     if len(QUESTION_LEAD_PATTERN.findall(text)) > 1:
@@ -153,7 +157,10 @@ class OpenAIInterviewer:
             if issue is None:
                 return turn
         return NextTurn(
-            say="What was one important technical decision you personally made in that work?",
+            say=(
+                "Thank you, that gives me useful context. What was one important technical "
+                "decision you personally made in that work?"
+            ),
             rationale="Use a safe focused fallback after invalid generated turns.",
             topic="Technical decision",
             should_end=False,
