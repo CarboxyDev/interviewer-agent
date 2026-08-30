@@ -245,9 +245,7 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
 
 async def test_interviewer_simplifies_a_grounded_bundled_question_without_retry() -> None:
     response = NextTurn(
-        say=(
-            "You mentioned owning the API workflow. What did you build, and how did you test it?"
-        ),
+        say=("You mentioned owning the API workflow. What did you build, and how did you test it?"),
         rationale="Probe implementation and testing.",
         topic="Backend project",
         answer_quality=AnswerQuality.SUBSTANTIVE,
