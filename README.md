@@ -24,11 +24,24 @@ Open `http://127.0.0.1:6080/vnc.html?autoconnect=1`, sign in to the dedicated bo
 then stop the setup command with `Ctrl+C`. The application never automates the account password,
 MFA, CAPTCHA, recovery flow, or cookie injection.
 
-Check the runtime and start an interview through the CLI:
+Check the runtime:
 
 ```bash
 docker compose exec interviewer voice-interviewer doctor --live
+```
 
+For the guided demo, place exactly one PDF resume and `backend-job-description.txt` in `input/`,
+then run:
+
+```bash
+scripts/demo-interview.sh
+```
+
+The launcher prompts for the Meet URL and duration, starts the interview, prints state changes, and
+shows the artifact directory when the session finishes. To start directly with explicit paths, use
+the CLI:
+
+```bash
 docker compose exec interviewer voice-interviewer interview start \
   --meeting-url 'https://meet.google.com/abc-defg-hij' \
   --resume /input/resume.pdf \
@@ -37,9 +50,8 @@ docker compose exec interviewer voice-interviewer interview start \
   --authorized
 ```
 
-Place the referenced input files in the local `input/` directory before starting. The CLI also
-supports status, stop, download, metrics, and deletion commands. The same capabilities are exposed
-through the local FastAPI routes documented at `http://127.0.0.1:8000/docs`.
+The CLI also supports status, stop, download, metrics, and deletion commands. The same capabilities
+are exposed through the local FastAPI routes documented at `http://127.0.0.1:8000/docs`.
 
 ## Safety contract
 
