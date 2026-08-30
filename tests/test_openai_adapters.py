@@ -115,6 +115,22 @@ def test_spoken_turn_guard_rejects_bundled_questions() -> None:
     assert spoken_turn_issue(focused, latest_answer="I built a payment API.") is None
 
 
+def test_spoken_turn_guard_accepts_natural_semicolon_boundary() -> None:
+    turn = NextTurn(
+        say=(
+            "You mentioned database-access services; what did one of those services do for its "
+            "callers?"
+        ),
+        rationale="Probe one concrete responsibility.",
+        topic="Database services",
+        answer_quality=AnswerQuality.PARTIAL,
+        response_mode=ResponseMode.FOLLOW_UP,
+        should_end=False,
+    )
+
+    assert spoken_turn_issue(turn, latest_answer="I created database services.") is None
+
+
 def test_spoken_turn_guard_rejects_false_generic_acknowledgment_for_non_answer() -> None:
     generic = NextTurn(
         say="Thanks, that gives me useful context. What database did you use?",
@@ -135,6 +151,46 @@ def test_spoken_turn_guard_rejects_false_generic_acknowledgment_for_non_answer()
 
     assert spoken_turn_issue(generic, latest_answer="I don't know") is not None
     assert spoken_turn_issue(recovery, latest_answer="I don't know") is None
+
+
+def test_spoken_turn_guard_rejects_near_duplicate_question() -> None:
+    repeated = NextTurn(
+        say=(
+            "You added a little more context about the service. What was one backend "
+            "responsibility you personally owned?"
+        ),
+        rationale="Probe ownership.",
+        topic="Ownership",
+        answer_quality=AnswerQuality.PARTIAL,
+        response_mode=ResponseMode.NARROW,
+        should_end=False,
+    )
+    changed_angle = NextTurn(
+        say="You worked on database access layers. What changed because of your contribution?",
+        rationale="Move from ownership to impact.",
+        topic="Impact",
+        answer_quality=AnswerQuality.PARTIAL,
+        response_mode=ResponseMode.CHANGE_TOPIC,
+        should_end=False,
+    )
+    prior = ("Earlier context. What was one backend responsibility you personally owned?",)
+
+    assert (
+        spoken_turn_issue(
+            repeated,
+            latest_answer="I designed access layers.",
+            prior_questions=prior,
+        )
+        is not None
+    )
+    assert (
+        spoken_turn_issue(
+            changed_angle,
+            latest_answer="I designed access layers.",
+            prior_questions=prior,
+        )
+        is None
+    )
 
 
 async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
@@ -185,6 +241,44 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
     assert turn.say.startswith("You mentioned owning the API workflow.")
     assert len(fake_responses.calls) == 2
     assert "REVISION REQUIRED" in fake_responses.calls[1]["input"]
+
+
+async def test_interviewer_simplifies_a_grounded_bundled_question_without_retry() -> None:
+    response = NextTurn(
+        say=(
+            "You mentioned owning the API workflow. What did you build, and how did you test it?"
+        ),
+        rationale="Probe implementation and testing.",
+        topic="Backend project",
+        answer_quality=AnswerQuality.SUBSTANTIVE,
+        response_mode=ResponseMode.FOLLOW_UP,
+        should_end=False,
+    ).model_dump_json()
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(output_text=response)
+
+    fake_responses = FakeResponses()
+    client = SimpleNamespace(responses=fake_responses)
+    interviewer = OpenAIInterviewer(
+        cast(Any, client),
+        model="test-model",
+        reasoning_effort="none",
+    )
+
+    turn = await interviewer.next_turn(
+        plan="Ask about backend decisions.",
+        transcript=[Utterance(Speaker.CANDIDATE, "I built a payment API.", 0, 1)],
+        seconds_remaining=300,
+    )
+
+    assert turn.say == "You mentioned owning the API workflow. What did you build?"
+    assert len(fake_responses.calls) == 1
 
 
 def test_realtime_transcription_events_are_correlated_and_deduplicated() -> None:

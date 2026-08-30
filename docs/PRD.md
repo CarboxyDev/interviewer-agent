@@ -39,12 +39,14 @@ initiate a natural interview, and save consented outputs locally.
 8. Split broad design exercises into progressive questions about individual decisions.
 9. Narrow once or change topics when the candidate says they do not know or finds a task difficult
    to answer verbally.
-10. Treat a short request to think as a pause, not a completed answer, and keep waiting.
-11. Repeat the current question deterministically when the candidate asks, without advancing the
+10. Never ask a substantially identical question twice unless the candidate explicitly requests a
+    repeat. After one recovery attempt on a vague answer, accommodate it by changing angle or topic.
+11. Treat a short request to think as a pause, not a completed answer, and keep waiting.
+12. Repeat the current question deterministically when the candidate asks, without advancing the
     interview plan.
-12. Treat the requested duration as a soft target. Finish the current answer before closing.
-13. Always play a deterministic closing statement before stopping recording and leaving.
-14. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
+13. Treat the requested duration as a soft target. Finish the current answer before closing.
+14. Always play a deterministic closing statement before stopping recording and leaving.
+15. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
 
 ## Outputs
 
@@ -76,6 +78,7 @@ initiate a natural interview, and save consented outputs locally.
 - The post-consent opening explains the format before technical questioning begins.
 - Each generated follow-up responds to the assessed answer quality. It grounds substantive
   acknowledgments in a concrete detail and never praises or advances from a non-answer.
+- A near-duplicate generated question is repaired or replaced with a different angle.
 - A generated multi-part or oversized spoken question is repaired once, then replaced by a safe
   focused fallback if still invalid.
 - Candidate departure results in `STOPPED`, not `FAILED`, with available partial artifacts.

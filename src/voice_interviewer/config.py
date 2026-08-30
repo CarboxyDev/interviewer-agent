@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     consent_timeout_seconds: int = Field(default=120, ge=30, le=300)
     response_timeout_seconds: int = Field(default=20, ge=5, le=60)
     candidate_turn_timeout_seconds: int = Field(default=120, ge=30, le=300)
-    candidate_turn_grace_seconds: float = Field(default=2.0, ge=0.3, le=3.0)
+    candidate_turn_grace_seconds: float = Field(default=1.0, ge=0.3, le=3.0)
     tts_timeout_seconds: int = Field(default=45, ge=5, le=120)
     maximum_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
 
