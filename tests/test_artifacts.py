@@ -30,12 +30,25 @@ async def test_artifact_lifecycle(tmp_path: Path) -> None:
         areas_to_probe=[],
         evidence=["Candidate said they built APIs"],
     )
-    await store.write_outputs(session, transcript, notes)
+    await store.write_outputs(
+        session,
+        transcript,
+        notes,
+        {"schema_version": 1, "summary": {"llm.request.next_turn": {"count": 1}}},
+    )
     names = {path.name for path in await store.list(str(session.id))}
-    assert names == {"notes.md", "session.json", "transcript.json", "transcript.md"}
+    assert names == {
+        "metrics.json",
+        "notes.md",
+        "session.json",
+        "transcript.json",
+        "transcript.md",
+    }
     payload = json.loads((store.session_dir(str(session.id)) / "transcript.json").read_text())
     assert payload[0]["speaker"] == "candidate"
     assert "hiring" not in (store.session_dir(str(session.id)) / "notes.md").read_text()
+    metrics = json.loads((store.session_dir(str(session.id)) / "metrics.json").read_text())
+    assert metrics["summary"]["llm.request.next_turn"]["count"] == 1
 
     await store.delete_all(str(session.id))
     assert not store.session_dir(str(session.id)).exists()

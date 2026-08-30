@@ -60,8 +60,21 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
         audio=audio,
         stt=FakeSTT(
             [
-                SpeechEvent(SpeechEventKind.SPEECH_STARTED),
-                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yes, I consent"),
+                SpeechEvent(
+                    SpeechEventKind.SPEECH_STARTED,
+                    item_id="consent-1",
+                    audio_offset_ms=100,
+                ),
+                SpeechEvent(
+                    SpeechEventKind.SPEECH_STOPPED,
+                    item_id="consent-1",
+                    audio_offset_ms=800,
+                ),
+                SpeechEvent(
+                    SpeechEventKind.FINAL_TRANSCRIPT,
+                    "Yes, I consent",
+                    item_id="consent-1",
+                ),
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
                 SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Let me think"),
                 SpeechEvent(SpeechEventKind.SPEECH_STARTED),
@@ -113,9 +126,16 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
         item["text"] == "What if the external call succeeded but the database write failed?"
         for item in utterances
     )
+    metrics = json.loads((artifacts.session_dir(str(session.id)) / "metrics.json").read_text())
+    assert metrics["summary"]["llm.request.next_turn"]["count"] == 2
+    assert metrics["summary"]["stt.audio_segment"]["average_ms"] == 700.0
+    assert metrics["summary"]["stt.post_speech"]["count"] == 1
+    assert metrics["summary"]["tts.first_audio"]["count"] >= 1
+    assert metrics["summary"]["pipeline.response_to_first_audio"]["count"] >= 1
     names = {path.name for path in await artifacts.list(str(session.id))}
     assert names == {
         "interview.mp3",
+        "metrics.json",
         "notes.md",
         "session.json",
         "transcript.json",
@@ -227,6 +247,7 @@ async def test_runner_stops_gracefully_and_keeps_partial_outputs_when_candidate_
     names = {path.name for path in await artifacts.list(str(session.id))}
     assert names == {
         "interview.mp3",
+        "metrics.json",
         "notes.md",
         "session.json",
         "transcript.json",

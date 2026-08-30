@@ -4,7 +4,7 @@ import asyncio
 import json
 import re
 import shutil
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
@@ -13,6 +13,7 @@ from voice_interviewer.domain import InterviewNotes, Session, Utterance
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 OUTPUT_NAMES = {
     "interview.mp3",
+    "metrics.json",
     "transcript.json",
     "transcript.md",
     "notes.md",
@@ -68,6 +69,7 @@ class FilesystemArtifactStore:
         session: Session,
         transcript: Sequence[Utterance],
         notes: InterviewNotes,
+        metrics: Mapping[str, object],
     ) -> None:
         directory = self.session_dir(str(session.id))
         transcript_data = [
@@ -106,6 +108,10 @@ class FilesystemArtifactStore:
             (directory / "notes.md").write_text(notes_markdown, encoding="utf-8")
             (directory / "session.json").write_text(
                 json.dumps(session_data, indent=2, default=str),
+                encoding="utf-8",
+            )
+            (directory / "metrics.json").write_text(
+                json.dumps(metrics, indent=2),
                 encoding="utf-8",
             )
 

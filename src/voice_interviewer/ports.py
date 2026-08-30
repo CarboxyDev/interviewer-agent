@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -64,6 +64,7 @@ class ArtifactStore(Protocol):
         session: Session,
         transcript: Sequence[Utterance],
         notes: InterviewNotes,
+        metrics: Mapping[str, object],
     ) -> None: ...
 
     async def delete_content(self, session_id: str) -> None: ...

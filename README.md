@@ -4,7 +4,7 @@
 
 A consent-first, Python-first voice interviewer that joins Google Meet as a guest and runs an
 explicit STT to LLM to TTS cascade. It produces an audio recording, speaker-labelled transcript,
-session metadata, and evidence-based notes.
+session metadata, per-stage latency metrics, and evidence-based notes.
 
 After consent, the agent explains the interview format and asks one focused, verbally answerable
 question at a time. The requested duration is a soft target: an answer already in progress can
@@ -79,13 +79,33 @@ the uploaded resume or job-description files:
 
 - `GET /v1/interviews?limit=20&offset=0`: newest sessions first, with total count
 - `GET /v1/interviews/{id}`: one session
+- `GET /v1/interviews/{id}/metrics`: cascade and end-to-end latency metrics
 - `GET /v1/interviews/{id}/artifacts`: generated artifact names and sizes
 - `GET /v1/interviews/{id}/artifacts/{name}`: download one generated artifact
 - `GET /v1/interviews/{id}/artifacts.zip`: download all generated artifacts
 - `DELETE /v1/interviews/{id}`: delete terminal-session metadata, inputs, and outputs
 
-Allowed downloads are `interview.mp3`, `transcript.json`, `transcript.md`, `notes.md`, and
-`session.json`.
+Allowed downloads are `interview.mp3`, `transcript.json`, `transcript.md`, `notes.md`,
+`session.json`, and `metrics.json`.
+
+Each completed or consented partial session includes raw timing events plus count, average, p50,
+p95, and maximum summaries. Inspect them through the API or CLI:
+
+```bash
+docker compose exec interviewer voice-interviewer interview metrics SESSION_ID
+```
+
+The main figures are:
+
+- `stt.audio_segment`: the server VAD audio window, including configured padding and end silence
+- `stt.post_speech`: detected speech end to final transcript receipt
+- `llm.request.next_turn`: final transcript processing and next-question generation
+- `tts.first_audio`: TTS request start to first PCM audio chunk
+- `pipeline.response_to_first_audio`: final transcript receipt to the first bot audio chunk
+- `pipeline.response_to_playback_end`: final transcript receipt to completed bot playback
+
+These are client-observed wall-clock measurements. They include network delay and the local audio
+path where applicable, which makes them representative of the actual demo experience.
 
 ## Models and configuration
 

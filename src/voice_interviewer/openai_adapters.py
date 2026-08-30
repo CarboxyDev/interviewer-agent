@@ -354,7 +354,17 @@ def _speech_event_from_realtime_event(
     item_id_value = event.get("item_id")
     item_id = str(item_id_value) if item_id_value else None
     if event_type == "input_audio_buffer.speech_started":
-        return SpeechEvent(SpeechEventKind.SPEECH_STARTED, item_id=item_id)
+        return SpeechEvent(
+            SpeechEventKind.SPEECH_STARTED,
+            item_id=item_id,
+            audio_offset_ms=_audio_offset(event.get("audio_start_ms")),
+        )
+    if event_type == "input_audio_buffer.speech_stopped":
+        return SpeechEvent(
+            SpeechEventKind.SPEECH_STOPPED,
+            item_id=item_id,
+            audio_offset_ms=_audio_offset(event.get("audio_end_ms")),
+        )
     if event_type != "conversation.item.input_audio_transcription.completed":
         return None
     if item_id and item_id in completed_item_ids:
@@ -365,6 +375,12 @@ def _speech_event_from_realtime_event(
     if not transcript:
         return None
     return SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, transcript, item_id)
+
+
+def _audio_offset(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return int(value)
 
 
 async def _wait_for_realtime_event(socket: Any, expected_type: str) -> dict[str, Any]:

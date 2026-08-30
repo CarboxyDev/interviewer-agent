@@ -152,7 +152,19 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
 def test_realtime_transcription_events_are_correlated_and_deduplicated() -> None:
     completed: set[str] = set()
     started = _speech_event_from_realtime_event(
-        {"type": "input_audio_buffer.speech_started", "item_id": "item-1"},
+        {
+            "type": "input_audio_buffer.speech_started",
+            "item_id": "item-1",
+            "audio_start_ms": 100,
+        },
+        completed,
+    )
+    stopped = _speech_event_from_realtime_event(
+        {
+            "type": "input_audio_buffer.speech_stopped",
+            "item_id": "item-1",
+            "audio_end_ms": 1_600,
+        },
         completed,
     )
     final_event = {
@@ -166,6 +178,10 @@ def test_realtime_transcription_events_are_correlated_and_deduplicated() -> None
     assert started is not None
     assert started.kind is SpeechEventKind.SPEECH_STARTED
     assert started.item_id == "item-1"
+    assert started.audio_offset_ms == 100
+    assert stopped is not None
+    assert stopped.kind is SpeechEventKind.SPEECH_STOPPED
+    assert stopped.audio_offset_ms == 1_600
     assert final is not None
     assert final.kind is SpeechEventKind.FINAL_TRANSCRIPT
     assert final.text == "I built the API."

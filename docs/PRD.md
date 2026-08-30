@@ -22,6 +22,7 @@ initiate a natural interview, and save consented outputs locally.
 - Local SQLite metadata and filesystem artifacts
 - FastAPI and CLI control surfaces
 - Newest-first paginated session history and local-only artifact downloads
+- Per-stage and end-to-end cascade latency metrics with summary percentiles
 
 ## Conversation behavior
 
@@ -50,6 +51,7 @@ initiate a natural interview, and save consented outputs locally.
 - `transcript.md`: readable transcript
 - `notes.md`: factual themes and supporting evidence, without a hiring verdict
 - `session.json`: state transitions, configuration, and failure details
+- `metrics.json`: raw STT, LLM, TTS, playback, and end-to-end timing events with summaries
 
 ## Non-goals
 
@@ -77,6 +79,8 @@ initiate a natural interview, and save consented outputs locally.
 - Reaching the target duration never causes a new question or an abrupt exit. The current answer
   receives its configured response window, followed by the deterministic closing statement.
 - Normal responses begin within 3 seconds on a healthy network.
+- Each consented completed or partial interview exposes latency events and average, p50, p95, and
+  maximum summaries through the artifact API.
 - The agent never asks about protected personal characteristics.
 - A second concurrent start returns HTTP 409.
 - A manual admission request is sent at most once and has a configurable timeout.

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import tempfile
 import zipfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
@@ -150,6 +151,19 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
             media_type="application/zip",
             background=BackgroundTask(os.unlink, archive),
         )
+
+    @app.get("/v1/interviews/{session_id}/metrics")
+    async def get_metrics(session_id: str) -> dict[str, object]:
+        try:
+            paths = await application_runtime.artifacts.list(session_id)
+            await application_runtime.service.get(session_id)
+        except SessionNotFoundError as exc:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Interview not found") from exc
+        metrics_path = next((path for path in paths if path.name == "metrics.json"), None)
+        if metrics_path is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Metrics are not ready")
+        content = await asyncio.to_thread(metrics_path.read_text, encoding="utf-8")
+        return cast(dict[str, object], json.loads(content))
 
     @app.get("/v1/interviews/{session_id}/artifacts/{artifact_name}")
     async def download_artifact(session_id: str, artifact_name: str) -> FileResponse:

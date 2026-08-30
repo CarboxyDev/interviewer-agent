@@ -94,6 +94,7 @@ def test_api_session_lifecycle_and_conflicts(tmp_path: Path) -> None:
         assert client.get(f"/v1/interviews/{session_id}").status_code == 200
         assert client.get(f"/v1/interviews/{session_id}/artifacts").json() == []
         assert client.get(f"/v1/interviews/{session_id}/artifacts.zip").status_code == 409
+        assert client.get(f"/v1/interviews/{session_id}/metrics").status_code == 409
 
         second = client.post(
             "/v1/interviews",
@@ -123,9 +124,16 @@ def test_api_downloads_artifact_archive(tmp_path: Path) -> None:
         assert client.post(f"/v1/interviews/{session_id}/stop").status_code == 200
         directory = runtime.artifacts.session_dir(session_id)
         (directory / "transcript.md").write_text("# Transcript", encoding="utf-8")
+        (directory / "metrics.json").write_text(
+            '{"schema_version": 1, "summary": {}}',
+            encoding="utf-8",
+        )
 
         listing = client.get(f"/v1/interviews/{session_id}/artifacts")
-        assert listing.json()[0]["name"] == "transcript.md"
+        assert {item["name"] for item in listing.json()} == {"metrics.json", "transcript.md"}
+        metrics = client.get(f"/v1/interviews/{session_id}/metrics")
+        assert metrics.status_code == 200
+        assert metrics.json()["schema_version"] == 1
         direct_download = client.get(f"/v1/interviews/{session_id}/artifacts/transcript.md")
         assert direct_download.status_code == 200
         assert direct_download.content == b"# Transcript"
@@ -134,7 +142,7 @@ def test_api_downloads_artifact_archive(tmp_path: Path) -> None:
         download = client.get(f"/v1/interviews/{session_id}/artifacts.zip")
         assert download.status_code == 200
         with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
-            assert archive.namelist() == ["transcript.md"]
+            assert archive.namelist() == ["metrics.json", "transcript.md"]
 
 
 def test_api_defaults_to_30_minutes(tmp_path: Path) -> None:

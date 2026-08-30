@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -93,6 +94,7 @@ class Speaker(StrEnum):
 
 class SpeechEventKind(StrEnum):
     SPEECH_STARTED = "SPEECH_STARTED"
+    SPEECH_STOPPED = "SPEECH_STOPPED"
     FINAL_TRANSCRIPT = "FINAL_TRANSCRIPT"
 
 
@@ -168,6 +170,12 @@ class SpeechEvent:
     kind: SpeechEventKind
     text: str = ""
     item_id: str | None = None
+    audio_offset_ms: int | None = None
+    received_at_monotonic: float = field(
+        default_factory=time.monotonic,
+        repr=False,
+        compare=False,
+    )
 
 
 @dataclass(frozen=True, slots=True)

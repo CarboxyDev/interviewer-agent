@@ -116,6 +116,15 @@ def download_artifacts(
     typer.echo(str(output.resolve()))
 
 
+@interview_app.command("metrics")
+def interview_metrics(
+    session_id: str,
+    server: Annotated[str, typer.Option()] = "http://127.0.0.1:8000",
+) -> None:
+    """Show cascade and end-to-end latency metrics for a completed session."""
+    _show_response(httpx.get(f"{server}/v1/interviews/{session_id}/metrics", timeout=10))
+
+
 @interview_app.command("delete")
 def delete_interview(
     session_id: str,

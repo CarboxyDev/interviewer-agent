@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from contextlib import suppress
+from typing import TypeVar
 
 from voice_interviewer.conversation import (
     CONSENT_DECLINED_CLOSING,
@@ -33,6 +34,7 @@ from voice_interviewer.domain import (
     Utterance,
 )
 from voice_interviewer.errors import ConsentWithdrawnError, InterviewerError, ParticipantLeftError
+from voice_interviewer.metrics import LatencyTracker
 from voice_interviewer.ports import (
     ArtifactStore,
     AudioRouter,
@@ -42,6 +44,8 @@ from voice_interviewer.ports import (
     SpeechToText,
     TextToSpeech,
 )
+
+T = TypeVar("T")
 
 
 class SpeechEventCursor:
@@ -118,6 +122,16 @@ class ConversationRunner:
         self.stt_keyword_limit = stt_keyword_limit
         self.transcript_clarification_attempts = transcript_clarification_attempts
         self._stop_requested = asyncio.Event()
+        self._metric_models = {
+            stage: str(model)
+            for stage, adapter in (("stt", stt), ("llm", interviewer), ("tts", tts))
+            if (model := getattr(adapter, "model", None)) is not None
+        }
+        self.metrics: LatencyTracker
+        self._speech_started_offsets: dict[str, int]
+        self._speech_stopped_events: dict[str, SpeechEvent]
+        self._latest_final_transcript_at: float | None
+        self._reset_metrics()
 
     async def stop(self, session_id: str) -> None:
         self._stop_requested.set()
@@ -126,6 +140,7 @@ class ConversationRunner:
 
     async def run(self, session_id: str) -> None:
         self._stop_requested.clear()
+        self._reset_metrics()
         consented = False
         recording_started = False
         speech_events: SpeechEventCursor | None = None
@@ -142,10 +157,13 @@ class ConversationRunner:
                 extract_document(resume_path),
                 extract_document(job_path),
             )
-            plan = await self.interviewer.prepare(
-                resume_text=resume_text,
-                job_description_text=job_text,
-                duration_minutes=session.duration_minutes,
+            plan = await self._timed_llm(
+                "prepare",
+                self.interviewer.prepare(
+                    resume_text=resume_text,
+                    job_description_text=job_text,
+                    duration_minutes=session.duration_minutes,
+                ),
             )
 
             self._raise_if_stopped()
@@ -198,15 +216,20 @@ class ConversationRunner:
             await self.repository.transition(session_id, SessionState.FINALIZING)
             await self.audio.stop_recording()
             recording_started = False
-            notes = await self.interviewer.notes(transcript)
+            notes = await self._timed_llm("notes", self.interviewer.notes(transcript))
             session = await self.repository.get(session_id)
             if session is None:
                 return
-            await self.artifacts.write_outputs(session, transcript, notes)
+            await self.artifacts.write_outputs(session, transcript, notes, self.metrics.report())
             await self.repository.transition(session_id, SessionState.COMPLETED)
             completed = await self.repository.get(session_id)
             if completed is not None:
-                await self.artifacts.write_outputs(completed, transcript, notes)
+                await self.artifacts.write_outputs(
+                    completed,
+                    transcript,
+                    notes,
+                    self.metrics.report(),
+                )
         except asyncio.CancelledError:
             await self._stop_session(session_id)
             raise
@@ -235,7 +258,7 @@ class ConversationRunner:
             )
             if transcript:
                 try:
-                    notes = await self.interviewer.notes(transcript)
+                    notes = await self._timed_llm("notes", self.interviewer.notes(transcript))
                 except Exception:
                     notes = InterviewNotes(
                         summary="The interview ended when the candidate left the meeting.",
@@ -244,7 +267,12 @@ class ConversationRunner:
                         evidence=[],
                     )
                 with suppress(Exception):
-                    await self.artifacts.write_outputs(stopped, transcript, notes)
+                    await self.artifacts.write_outputs(
+                        stopped,
+                        transcript,
+                        notes,
+                        self.metrics.report(),
+                    )
         except InterviewerError as exc:
             await self.repository.fail(session_id, exc.code, exc.detail)
         except TimeoutError as exc:
@@ -270,6 +298,7 @@ class ConversationRunner:
                 prompt,
                 events,
                 timeout_seconds=self.consent_timeout_seconds,
+                phase="consent",
             )
             decision = classify_consent(response)
             if decision is not ConsentDecision.UNCLEAR:
@@ -305,6 +334,7 @@ class ConversationRunner:
             opening,
             events,
             timeout_seconds=self.response_timeout_seconds,
+            phase="opening",
         )
         opening_ended = int((time.monotonic() - started) * 1000)
         (
@@ -348,6 +378,7 @@ class ConversationRunner:
                 clarification,
                 events,
                 timeout_seconds=self.response_timeout_seconds,
+                phase="clarification",
             )
             opening_ended = int((time.monotonic() - started) * 1000)
             opening_response, response_started, opening_ended = await self._honor_repeat_requests(
@@ -373,10 +404,13 @@ class ConversationRunner:
             if elapsed >= duration_seconds:
                 break
             remaining = max(0, duration_seconds - elapsed)
-            turn = await self.interviewer.next_turn(
-                plan=plan,
-                transcript=transcript,
-                seconds_remaining=remaining,
+            turn = await self._timed_llm(
+                "next_turn",
+                self.interviewer.next_turn(
+                    plan=plan,
+                    transcript=transcript,
+                    seconds_remaining=remaining,
+                ),
             )
             if turn.should_end or time.monotonic() - started >= duration_seconds:
                 break
@@ -386,6 +420,7 @@ class ConversationRunner:
                 turn.say,
                 events,
                 timeout_seconds=self.response_timeout_seconds,
+                phase="interview",
             )
             response_ended = int((time.monotonic() - started) * 1000)
             response, response_started, response_ended = await self._honor_repeat_requests(
@@ -420,6 +455,7 @@ class ConversationRunner:
                     clarification,
                     events,
                     timeout_seconds=self.response_timeout_seconds,
+                    phase="clarification",
                 )
                 response_ended = int((time.monotonic() - started) * 1000)
                 response, response_started, response_ended = await self._honor_repeat_requests(
@@ -444,7 +480,7 @@ class ConversationRunner:
         transcript.append(
             Utterance(Speaker.INTERVIEWER, INTERVIEW_CLOSING, closing_started, closing_started)
         )
-        await self._play_with_timeout(INTERVIEW_CLOSING)
+        await self._play_with_timeout(INTERVIEW_CLOSING, phase="closing")
         self._raise_if_stopped()
 
     async def _honor_repeat_requests(
@@ -479,6 +515,7 @@ class ConversationRunner:
                 repeated,
                 events,
                 timeout_seconds=self.response_timeout_seconds,
+                phase="repeat",
             )
             response_started = repeated_started
             response_ended = int((time.monotonic() - interview_started) * 1000)
@@ -490,10 +527,11 @@ class ConversationRunner:
         events: SpeechEventCursor | AsyncIterator[SpeechEvent],
         *,
         timeout_seconds: float,
+        phase: str = "interview",
     ) -> str:
         cursor = events if isinstance(events, SpeechEventCursor) else SpeechEventCursor(events)
         owns_cursor = cursor is not events
-        playback = asyncio.create_task(self.audio.play_bot_audio(self.tts.synthesize(text)))
+        playback = asyncio.create_task(self._play_measured(text, phase=phase))
         playback_deadline = time.monotonic() + self.tts_timeout_seconds
         response_deadline: float | None = None
         completion_deadline: float | None = None
@@ -536,6 +574,7 @@ class ConversationRunner:
                     raise TimeoutError("Timed out waiting for candidate speech")
                 if event_task in done:
                     event = cursor.consume(event_task)
+                    self._record_stt_event(event, phase=phase)
                     if event.kind is SpeechEventKind.SPEECH_STARTED:
                         if not playback.done():
                             await self._stop_playback(playback)
@@ -543,6 +582,8 @@ class ConversationRunner:
                         active_item_id = event.item_id
                         response_deadline = time.monotonic() + self.candidate_turn_timeout_seconds
                         completion_deadline = None
+                    elif event.kind is SpeechEventKind.SPEECH_STOPPED:
+                        continue
                     elif event.kind is SpeechEventKind.FINAL_TRANSCRIPT:
                         if not playback.done():
                             await self._stop_playback(playback)
@@ -589,13 +630,129 @@ class ConversationRunner:
         with suppress(asyncio.CancelledError):
             await playback
 
-    async def _play_with_timeout(self, text: str) -> None:
+    async def _play_with_timeout(self, text: str, *, phase: str = "closing") -> None:
         try:
             async with asyncio.timeout(self.tts_timeout_seconds):
-                await self.audio.play_bot_audio(self.tts.synthesize(text))
+                await self._play_measured(text, phase=phase)
         except TimeoutError as exc:
             await self.audio.stop_bot_audio()
             raise TimeoutError("Timed out playing interviewer speech") from exc
+
+    async def _play_measured(self, text: str, *, phase: str) -> None:
+        playback_started = time.monotonic()
+        synthesis_started = playback_started
+        response_anchor = self._latest_final_transcript_at
+        first_audio_at: float | None = None
+        status = "completed"
+
+        async def measured_audio() -> AsyncIterator[bytes]:
+            nonlocal first_audio_at
+            async for chunk in self.tts.synthesize(text):
+                if first_audio_at is None:
+                    first_audio_at = time.monotonic()
+                    self.metrics.record(
+                        "tts.first_audio",
+                        first_audio_at - synthesis_started,
+                        phase=phase,
+                    )
+                    if response_anchor is not None:
+                        self.metrics.record(
+                            "pipeline.response_to_first_audio",
+                            first_audio_at - response_anchor,
+                            phase=phase,
+                        )
+                        if self._latest_final_transcript_at == response_anchor:
+                            self._latest_final_transcript_at = None
+                yield chunk
+
+        try:
+            await self.audio.play_bot_audio(measured_audio())
+        except asyncio.CancelledError:
+            status = "interrupted"
+            raise
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            playback_ended = time.monotonic()
+            self.metrics.record(
+                "tts.playback",
+                playback_ended - playback_started,
+                phase=phase,
+                status=status,
+            )
+            if response_anchor is not None and first_audio_at is not None:
+                self.metrics.record(
+                    "pipeline.response_to_playback_end",
+                    playback_ended - response_anchor,
+                    phase=phase,
+                    status=status,
+                )
+
+    async def _timed_llm(self, operation: str, awaitable: Awaitable[T]) -> T:
+        started = time.monotonic()
+        status = "completed"
+        try:
+            return await awaitable
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            phase = {
+                "prepare": "preparation",
+                "notes": "finalization",
+            }.get(operation, "interview")
+            self.metrics.record(
+                "llm.request",
+                time.monotonic() - started,
+                phase=phase,
+                operation=operation,
+                status=status,
+            )
+
+    def _record_stt_event(self, event: SpeechEvent, *, phase: str) -> None:
+        item_id = event.item_id
+        if event.kind is SpeechEventKind.SPEECH_STARTED:
+            if item_id is not None and event.audio_offset_ms is not None:
+                self._speech_started_offsets[item_id] = event.audio_offset_ms
+            return
+        if event.kind is SpeechEventKind.SPEECH_STOPPED:
+            if item_id is not None:
+                self._speech_stopped_events[item_id] = event
+            return
+        if event.kind is not SpeechEventKind.FINAL_TRANSCRIPT:
+            return
+
+        self._latest_final_transcript_at = event.received_at_monotonic
+        if item_id is None:
+            return
+        stopped = self._speech_stopped_events.pop(item_id, None)
+        started_offset = self._speech_started_offsets.pop(item_id, None)
+        if stopped is None:
+            return
+        if (
+            started_offset is not None
+            and stopped.audio_offset_ms is not None
+            and stopped.audio_offset_ms >= started_offset
+        ):
+            self.metrics.record(
+                "stt.audio_segment",
+                (stopped.audio_offset_ms - started_offset) / 1000,
+                phase=phase,
+                item_id=item_id,
+            )
+        self.metrics.record(
+            "stt.post_speech",
+            event.received_at_monotonic - stopped.received_at_monotonic,
+            phase=phase,
+            item_id=item_id,
+        )
+
+    def _reset_metrics(self) -> None:
+        self.metrics = LatencyTracker(models=self._metric_models)
+        self._speech_started_offsets = {}
+        self._speech_stopped_events = {}
+        self._latest_final_transcript_at = None
 
     @staticmethod
     def _raise_if_consent_withdrawn(response: str) -> None:
