@@ -12,6 +12,7 @@ from voice_interviewer.domain import (
     Utterance,
 )
 from voice_interviewer.openai_adapters import (
+    INTERVIEWER_POLICY,
     REALTIME_TRANSCRIPTION_URL,
     OpenAIInterviewer,
     OpenAIRealtimeTranscriber,
@@ -19,6 +20,91 @@ from voice_interviewer.openai_adapters import (
     _speech_event_from_realtime_event,
     spoken_turn_issue,
 )
+
+
+def test_interviewer_policy_keeps_resume_job_and_transcript_sources_separate() -> None:
+    assert "Candidate statements in the transcript are established" in INTERVIEWER_POLICY
+    assert "job description describes" in INTERVIEWER_POLICY
+    assert "the role, not the candidate" in INTERVIEWER_POLICY
+    assert "do not attach a job-description technology" in INTERVIEWER_POLICY
+    assert "treat the correction as" in INTERVIEWER_POLICY
+    assert "authoritative for the interview" in INTERVIEWER_POLICY
+
+
+async def test_interview_plan_preserves_source_labels_and_avoids_stack_assumptions() -> None:
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(output_text="[JOB] FastAPI; [RESUME] Spring Boot at Sapper AI")
+
+    fake_responses = FakeResponses()
+    interviewer = OpenAIInterviewer(
+        cast(Any, SimpleNamespace(responses=fake_responses)),
+        model="test-model",
+        reasoning_effort="none",
+    )
+
+    plan = await interviewer.prepare(
+        resume_text="Built invoice APIs in Spring Boot at Sapper AI.",
+        job_description_text="The role uses FastAPI.",
+        duration_minutes=15,
+    )
+
+    assert plan.startswith("[JOB]")
+    prompt = fake_responses.calls[0]["input"]
+    assert "tag role requirements as [JOB]" in prompt
+    assert "candidate background as [RESUME]" in prompt
+    assert "Never merge [JOB] technologies with [RESUME] projects" in prompt
+
+
+async def test_interviewer_prompt_prioritizes_a_candidate_stack_correction() -> None:
+    response = NextTurn(
+        say=(
+            "Understood, those APIs used Spring Boot. What design decision mattered most for one "
+            "endpoint?"
+        ),
+        rationale="Continue from the corrected stack.",
+        topic="API design",
+        answer_quality=AnswerQuality.SUBSTANTIVE,
+        response_mode=ResponseMode.FOLLOW_UP,
+        should_end=False,
+    ).model_dump_json()
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(output_text=response)
+
+    fake_responses = FakeResponses()
+    interviewer = OpenAIInterviewer(
+        cast(Any, SimpleNamespace(responses=fake_responses)),
+        model="test-model",
+        reasoning_effort="none",
+    )
+
+    turn = await interviewer.next_turn(
+        plan="[JOB] FastAPI experience. [RESUME] Invoice APIs at Sapper AI.",
+        transcript=[
+            Utterance(
+                Speaker.CANDIDATE,
+                "Just to be clear, those APIs were not FastAPI. They used Spring Boot.",
+                0,
+                1,
+            )
+        ],
+        seconds_remaining=300,
+    )
+
+    assert "Spring Boot" in turn.say
+    prompt = fake_responses.calls[0]["input"]
+    assert "[JOB] items are role requirements, never candidate facts" in prompt
+    assert "latest candidate turn corrects an earlier premise" in prompt
 
 
 def make_transcriber(model: str = "gpt-transcribe") -> OpenAIRealtimeTranscriber:
@@ -326,6 +412,118 @@ async def test_interviewer_simplifies_a_grounded_bundled_question_without_retry(
 
     assert turn.say == "You mentioned owning the API workflow. What did you build?"
     assert len(fake_responses.calls) == 1
+
+
+async def test_interviewer_forces_topic_change_after_repeated_narrow_questions() -> None:
+    responses = [
+        NextTurn(
+            say="The transition is still unclear. What event made the invoice approval-ready?",
+            rationale="Continue probing the transition.",
+            topic="Approval transition",
+            answer_quality=AnswerQuality.PARTIAL,
+            response_mode=ResponseMode.FOLLOW_UP,
+            should_end=False,
+        ).model_dump_json(),
+        NextTurn(
+            say=(
+                "We can leave that transition there. What production issue did you personally "
+                "diagnose?"
+            ),
+            rationale="Move to production debugging.",
+            topic="Production debugging",
+            answer_quality=AnswerQuality.PARTIAL,
+            response_mode=ResponseMode.CHANGE_TOPIC,
+            should_end=False,
+        ).model_dump_json(),
+    ]
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(output_text=responses.pop(0))
+
+    fake_responses = FakeResponses()
+    interviewer = OpenAIInterviewer(
+        cast(Any, SimpleNamespace(responses=fake_responses)),
+        model="test-model",
+        reasoning_effort="none",
+    )
+    transcript = [
+        Utterance(
+            Speaker.INTERVIEWER,
+            "The risk is still abstract. What transition moved the invoice to approval?",
+            0,
+            1,
+        ),
+        Utterance(Speaker.CANDIDATE, "It became ready after matching.", 1, 2),
+        Utterance(
+            Speaker.INTERVIEWER,
+            "Matching finished for that invoice. What transition made it ready for approval?",
+            2,
+            3,
+        ),
+        Utterance(Speaker.CANDIDATE, "An internal pipeline handled it.", 3, 4),
+    ]
+
+    turn = await interviewer.next_turn(
+        plan="Cover workflow design and production debugging.",
+        transcript=transcript,
+        seconds_remaining=240,
+    )
+
+    assert turn.response_mode is ResponseMode.CHANGE_TOPIC
+    assert len(fake_responses.calls) == 2
+    assert "last two interviewer questions" in fake_responses.calls[0]["input"]
+    assert "must use CHANGE_TOPIC" in fake_responses.calls[1]["input"]
+
+
+async def test_interviewer_respects_candidate_ownership_boundary() -> None:
+    response = NextTurn(
+        say=(
+            "That implementation was outside your ownership. What production issue did you "
+            "personally diagnose?"
+        ),
+        rationale="Respect the ownership boundary.",
+        topic="Production debugging",
+        answer_quality=AnswerQuality.PARTIAL,
+        response_mode=ResponseMode.CHANGE_TOPIC,
+        should_end=False,
+    ).model_dump_json()
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(output_text=response)
+
+    fake_responses = FakeResponses()
+    interviewer = OpenAIInterviewer(
+        cast(Any, SimpleNamespace(responses=fake_responses)),
+        model="test-model",
+        reasoning_effort="none",
+    )
+
+    turn = await interviewer.next_turn(
+        plan="Cover implementation and debugging.",
+        transcript=[
+            Utterance(
+                Speaker.CANDIDATE,
+                "I didn't change this myself, so I can't comment.",
+                0,
+                1,
+            )
+        ],
+        seconds_remaining=60,
+    )
+
+    assert turn.response_mode is ResponseMode.CHANGE_TOPIC
+    assert "did not own that implementation" in fake_responses.calls[0]["input"]
+    assert "This is the final question" in fake_responses.calls[0]["input"]
 
 
 def test_realtime_transcription_events_are_correlated_and_deduplicated() -> None:

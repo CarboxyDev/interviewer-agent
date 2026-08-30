@@ -1,3 +1,5 @@
+from typing import cast
+
 from voice_interviewer.metrics import LatencyTracker
 
 
@@ -24,4 +26,5 @@ def test_latency_tracker_reports_stage_and_operation_percentiles() -> None:
             "max_ms": 400.0,
         }
     }
-    assert len(report["events"]) == 3
+    events = cast(list[dict[str, object]], report["events"])
+    assert len(events) == 3

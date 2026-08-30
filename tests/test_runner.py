@@ -9,6 +9,7 @@ from voice_interviewer.conversation import (
     CONSENT_DECLINED_CLOSING,
     CONSENT_WITHDRAWAL_CLOSING,
     INTERVIEW_CLOSING,
+    TIME_LIMIT_CLOSING,
     interview_opening,
 )
 from voice_interviewer.domain import (
@@ -209,6 +210,127 @@ async def test_runner_deletes_content_when_consent_is_withdrawn(tmp_path: Path) 
     assert withdrawn.state is SessionState.STOPPED
     assert not artifacts.session_dir(str(session.id)).exists()
     assert tts.spoken[-1] == CONSENT_WITHDRAWAL_CLOSING
+    await repository.close()
+
+
+async def test_runner_ends_interview_and_keeps_outputs_when_candidate_asks_to_stop(
+    tmp_path: Path,
+) -> None:
+    session, repository, artifacts = await prepare(tmp_path)
+    tts = FakeTTS()
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(),
+        audio=FakeAudio(),
+        stt=FakeSTT(
+            [
+                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yes, I consent"),
+                SpeechEvent(
+                    SpeechEventKind.FINAL_TRANSCRIPT,
+                    "I recently worked on backend invoice workflows.",
+                ),
+                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Please stop the interview"),
+            ]
+        ),
+        interviewer=FakeInterviewer(),
+        tts=tts,
+        admission_timeout_seconds=1,
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=1,
+        candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=500,
+        stt_keyword_limit=20,
+        transcript_clarification_attempts=1,
+    )
+
+    await runner.run(str(session.id))
+
+    completed = await repository.get(str(session.id))
+    assert completed is not None
+    assert completed.state is SessionState.COMPLETED
+    names = {path.name for path in await artifacts.list(str(session.id))}
+    assert names == {
+        "interview.mp3",
+        "metrics.json",
+        "notes.md",
+        "session.json",
+        "transcript.json",
+        "transcript.md",
+    }
+    transcript = json.loads(
+        (artifacts.session_dir(str(session.id)) / "transcript.json").read_text()
+    )
+    assert transcript[-2]["text"] == "Please stop the interview"
+    assert transcript[-1]["text"] == INTERVIEW_CLOSING
+    assert tts.spoken[-1] == INTERVIEW_CLOSING
+    await repository.close()
+
+
+async def test_runner_announces_one_final_question_then_uses_time_closing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "voice_interviewer.runner.INTERVIEW_FINAL_QUESTION_WINDOW_SECONDS",
+        600,
+    )
+    monkeypatch.setattr(
+        "voice_interviewer.runner.INTERVIEW_CLOSING_RESERVE_SECONDS",
+        0,
+    )
+    session, repository, artifacts = await prepare(tmp_path)
+    tts = FakeTTS()
+    runner = ConversationRunner(
+        repository=repository,
+        artifacts=artifacts,
+        meet=FakeMeet(),
+        audio=FakeAudio(),
+        stt=FakeSTT(
+            [
+                SpeechEvent(SpeechEventKind.FINAL_TRANSCRIPT, "Yes, I consent"),
+                SpeechEvent(
+                    SpeechEventKind.FINAL_TRANSCRIPT,
+                    "I recently worked on backend invoice workflows.",
+                ),
+                SpeechEvent(
+                    SpeechEventKind.FINAL_TRANSCRIPT,
+                    "I designed a versioned API.",
+                ),
+            ]
+        ),
+        interviewer=FakeInterviewer(),
+        tts=tts,
+        admission_timeout_seconds=1,
+        participant_timeout_seconds=1,
+        consent_timeout_seconds=1,
+        response_timeout_seconds=1,
+        candidate_turn_timeout_seconds=1,
+        candidate_turn_grace_seconds=0,
+        tts_timeout_seconds=1,
+        stt_context_max_chars=500,
+        stt_keyword_limit=20,
+        transcript_clarification_attempts=1,
+    )
+
+    await runner.run(str(session.id))
+
+    transcript = json.loads(
+        (artifacts.session_dir(str(session.id)) / "transcript.json").read_text()
+    )
+    questions = [
+        item["text"]
+        for item in transcript
+        if item["speaker"] == "interviewer" and "?" in item["text"]
+    ]
+    assert questions[-1].startswith("We are nearly out of time, so one final question.")
+    assert transcript[-1]["text"] == TIME_LIMIT_CLOSING
+    assert tts.spoken[-1] == TIME_LIMIT_CLOSING
+    metrics = json.loads((artifacts.session_dir(str(session.id)) / "metrics.json").read_text())
+    assert metrics["summary"]["llm.request.next_turn"]["count"] == 1
     await repository.close()
 
 

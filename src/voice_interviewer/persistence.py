@@ -163,8 +163,9 @@ class SqlAlchemySessionRepository:
             row = await db.get(SessionRow, session_id)
             if row is None:
                 raise LookupError(session_id)
-            row.consented_at = datetime.now(UTC)
-            row.updated_at = row.consented_at
+            consented_at = datetime.now(UTC)
+            row.consented_at = consented_at
+            row.updated_at = consented_at
         return _as_domain(row)
 
     async def fail(self, session_id: str, code: str, detail: str) -> Session:

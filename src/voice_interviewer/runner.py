@@ -11,10 +11,13 @@ from voice_interviewer.conversation import (
     CONSENT_DISCLOSURE,
     CONSENT_WITHDRAWAL_CLOSING,
     INTERVIEW_CLOSING,
+    TIME_LIMIT_CLOSING,
     build_transcription_hints,
     classify_consent,
+    final_question_prompt,
     interview_opening,
     is_consent_withdrawal,
+    is_interview_end_request,
     is_repeat_request,
     is_thinking_request,
     repeat_prompt,
@@ -46,6 +49,9 @@ from voice_interviewer.ports import (
 )
 
 T = TypeVar("T")
+
+INTERVIEW_CLOSING_RESERVE_SECONDS = 20
+INTERVIEW_FINAL_QUESTION_WINDOW_SECONDS = 90
 
 
 class SpeechEventCursor:
@@ -96,8 +102,8 @@ class ConversationRunner:
         admission_timeout_seconds: int,
         participant_timeout_seconds: int,
         consent_timeout_seconds: int,
-        response_timeout_seconds: int,
-        candidate_turn_timeout_seconds: int,
+        response_timeout_seconds: float,
+        candidate_turn_timeout_seconds: float,
         candidate_turn_grace_seconds: float,
         tts_timeout_seconds: int,
         stt_context_max_chars: int,
@@ -293,6 +299,7 @@ class ConversationRunner:
 
     async def _obtain_consent(self, events: SpeechEventCursor) -> str:
         prompt = CONSENT_DISCLOSURE
+        response = ""
         for attempt in range(2):
             response = await self._say_and_receive(
                 prompt,
@@ -359,6 +366,9 @@ class ConversationRunner:
                 opening_ended,
             )
         )
+        if is_interview_end_request(opening_response):
+            await self._close_interview(transcript, started)
+            return
         for _ in range(self.transcript_clarification_attempts):
             if not transcript_needs_clarification(opening_response):
                 break
@@ -399,11 +409,17 @@ class ConversationRunner:
                     opening_ended,
                 )
             )
+        if is_interview_end_request(opening_response):
+            await self._close_interview(transcript, started)
+            return
+        time_limit_closing = False
         while not self._stop_requested.is_set():
             elapsed = int(time.monotonic() - started)
-            if elapsed >= duration_seconds:
-                break
             remaining = max(0, duration_seconds - elapsed)
+            if remaining <= INTERVIEW_CLOSING_RESERVE_SECONDS:
+                time_limit_closing = True
+                break
+            final_question = remaining <= INTERVIEW_FINAL_QUESTION_WINDOW_SECONDS
             turn = await self._timed_llm(
                 "next_turn",
                 self.interviewer.next_turn(
@@ -412,12 +428,20 @@ class ConversationRunner:
                     seconds_remaining=remaining,
                 ),
             )
-            if turn.should_end or time.monotonic() - started >= duration_seconds:
+            remaining_after_generation = duration_seconds - int(time.monotonic() - started)
+            if turn.should_end:
+                time_limit_closing = final_question
                 break
+            if remaining_after_generation <= INTERVIEW_CLOSING_RESERVE_SECONDS:
+                time_limit_closing = True
+                break
+            spoken_turn = final_question_prompt(turn.say) if final_question else turn.say
             turn_started = int((time.monotonic() - started) * 1000)
-            transcript.append(Utterance(Speaker.INTERVIEWER, turn.say, turn_started, turn_started))
+            transcript.append(
+                Utterance(Speaker.INTERVIEWER, spoken_turn, turn_started, turn_started)
+            )
             response = await self._say_and_receive(
-                turn.say,
+                spoken_turn,
                 events,
                 timeout_seconds=self.response_timeout_seconds,
                 phase="interview",
@@ -425,7 +449,7 @@ class ConversationRunner:
             response_ended = int((time.monotonic() - started) * 1000)
             response, response_started, response_ended = await self._honor_repeat_requests(
                 response=response,
-                prompt=turn.say,
+                prompt=spoken_turn,
                 events=events,
                 transcript=transcript,
                 interview_started=started,
@@ -436,6 +460,8 @@ class ConversationRunner:
             transcript.append(
                 Utterance(Speaker.CANDIDATE, response, response_started, response_ended)
             )
+            if is_interview_end_request(response):
+                break
             for _ in range(self.transcript_clarification_attempts):
                 if not transcript_needs_clarification(response):
                     break
@@ -476,11 +502,26 @@ class ConversationRunner:
                         response_ended,
                     )
                 )
-        closing_started = int((time.monotonic() - started) * 1000)
+            if is_interview_end_request(response):
+                break
+            if final_question:
+                time_limit_closing = True
+                break
+        closing_text = TIME_LIMIT_CLOSING if time_limit_closing else INTERVIEW_CLOSING
+        await self._close_interview(transcript, started, closing_text=closing_text)
+
+    async def _close_interview(
+        self,
+        transcript: list[Utterance],
+        interview_started: float,
+        *,
+        closing_text: str = INTERVIEW_CLOSING,
+    ) -> None:
+        closing_started = int((time.monotonic() - interview_started) * 1000)
         transcript.append(
-            Utterance(Speaker.INTERVIEWER, INTERVIEW_CLOSING, closing_started, closing_started)
+            Utterance(Speaker.INTERVIEWER, closing_text, closing_started, closing_started)
         )
-        await self._play_with_timeout(INTERVIEW_CLOSING, phase="closing")
+        await self._play_with_timeout(closing_text, phase="closing")
         self._raise_if_stopped()
 
     async def _honor_repeat_requests(

@@ -5,18 +5,22 @@ from voice_interviewer.domain import InterviewNotes, NextTurn, SessionCreate
 
 
 def test_meet_url_is_validated_and_canonicalized() -> None:
-    request = SessionCreate(
-        meeting_url="https://meet.google.com/ABC-DEFG-HIJ?authuser=2",
-        duration_minutes=15,
-        meeting_authorization_confirmed=True,
+    request = SessionCreate.model_validate(
+        {
+            "meeting_url": "https://meet.google.com/ABC-DEFG-HIJ?authuser=2",
+            "duration_minutes": 15,
+            "meeting_authorization_confirmed": True,
+        }
     )
     assert str(request.meeting_url) == "https://meet.google.com/abc-defg-hij"
 
 
 def test_interview_duration_defaults_to_30_minutes() -> None:
-    request = SessionCreate(
-        meeting_url="https://meet.google.com/abc-defg-hij",
-        meeting_authorization_confirmed=True,
+    request = SessionCreate.model_validate(
+        {
+            "meeting_url": "https://meet.google.com/abc-defg-hij",
+            "meeting_authorization_confirmed": True,
+        }
     )
 
     assert request.duration_minutes == 30
@@ -33,10 +37,12 @@ def test_interview_duration_defaults_to_30_minutes() -> None:
 )
 def test_invalid_or_unauthorized_meet_is_rejected(url: str, authorized: bool) -> None:
     with pytest.raises(ValidationError):
-        SessionCreate(
-            meeting_url=url,
-            duration_minutes=15,
-            meeting_authorization_confirmed=authorized,
+        SessionCreate.model_validate(
+            {
+                "meeting_url": url,
+                "duration_minutes": 15,
+                "meeting_authorization_confirmed": authorized,
+            }
         )
 
 

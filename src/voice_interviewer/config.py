@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     candidate_turn_grace_seconds: float = Field(default=1.0, ge=0.3, le=3.0)
     tts_timeout_seconds: int = Field(default=45, ge=5, le=120)
     maximum_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+
+    def __init__(
+        self,
+        *,
+        _env_file: str | Path | None = ".env",
+        **values: Any,
+    ) -> None:
+        super().__init__(_env_file=_env_file, **values)
 
     @property
     def artifacts_dir(self) -> Path:

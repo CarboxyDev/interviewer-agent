@@ -17,6 +17,7 @@ from voice_interviewer.conversation import (
     is_clarification_request,
     is_interview_pushback,
     is_non_answer,
+    is_ownership_boundary,
 )
 from voice_interviewer.domain import (
     AnswerQuality,
@@ -53,8 +54,61 @@ GENERIC_ACKNOWLEDGMENT_PATTERN = re.compile(
     r"^(?:thank you|thanks|great|good|interesting|that (?:is|was|gives me)|useful context)\b",
     re.IGNORECASE,
 )
+CANDIDATE_CORRECTION_PATTERN = re.compile(
+    r"\b(?:just to be clear|to clarify|correction|(?:it|that|this) (?:was|is) not)\b",
+    re.IGNORECASE,
+)
+TOPIC_STOP_WORDS = {
+    "about",
+    "after",
+    "answer",
+    "because",
+    "candidate",
+    "concrete",
+    "could",
+    "describe",
+    "detail",
+    "did",
+    "does",
+    "exact",
+    "exactly",
+    "explain",
+    "give",
+    "identified",
+    "mean",
+    "one",
+    "please",
+    "the",
+    "for",
+    "from",
+    "into",
+    "they",
+    "specific",
+    "system",
+    "tell",
+    "that",
+    "their",
+    "there",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "with",
+    "would",
+    "your",
+}
 
 INTERVIEWER_POLICY = """You are a professional AI interviewer conducting an English interview.
+Keep evidence sources strictly separate. Candidate statements in the transcript are established
+interview evidence. Resume claims may be explored, but attribute them with wording such as "your
+resume mentions" unless the candidate already confirmed them aloud. The job description describes
+the role, not the candidate. Introduce its technologies with wording such as "this role uses" and
+ask about the candidate's experience without assuming they have it. Never combine a technology,
+employer, project, responsibility, or outcome from different sources unless one source explicitly
+links them. In particular, do not attach a job-description technology or a general resume skill to
+a project mentioned in the transcript. If the candidate corrects a premise, treat the correction as
+authoritative for the interview, acknowledge it briefly, and never repeat the rejected premise.
 Ask exactly one focused, verbally answerable question at a time. A question must have one answer
 target, one question mark, and no more than 35 words. Do not bundle subquestions, request a list of
 design dimensions, or ask the candidate to design an entire system verbally. For a complex topic,
@@ -170,7 +224,13 @@ class OpenAIInterviewer:
             "Identify role competencies, relevant resume evidence, and a flexible sequence of "
             "topics. Plan progressively scoped verbal questions, not a full-system design "
             "exercise. Break complex competencies into one decision per turn. Do not write a "
-            "rigid script.\n\n"
+            "rigid script. Keep sources explicit throughout the plan: tag role requirements as "
+            "[JOB] and candidate background as [RESUME]. Preserve the employer or project "
+            "attached to each resume claim. Never merge [JOB] technologies with [RESUME] "
+            "projects, and never "
+            "write a question that assumes a [JOB] requirement is candidate experience. For each "
+            "planned topic, prefer a neutral question that lets the candidate establish the stack "
+            "before drilling into implementation.\n\n"
             f"JOB DESCRIPTION\n{job_description_text[:50_000]}\n\n"
             f"RESUME\n{resume_text[:50_000]}"
         )
@@ -205,6 +265,10 @@ class OpenAIInterviewer:
         )
         clarification_requested = is_clarification_request(latest_answer)
         pushback_detected = is_interview_pushback(latest_answer)
+        ownership_boundary = is_ownership_boundary(latest_answer)
+        candidate_correction = bool(CANDIDATE_CORRECTION_PATTERN.search(latest_answer))
+        repeated_topic = _recent_questions_share_topic(prior_questions)
+        force_topic_change = not clarification_requested and (ownership_boundary or repeated_topic)
         latest_signal = ""
         if clarification_requested:
             scope_guidance = (
@@ -222,7 +286,34 @@ class OpenAIInterviewer:
                 "\n\nThe latest candidate turn is pushback that they already answered. Briefly "
                 "acknowledge it and use CHANGE_TOPIC. Do not demand the same missing detail again."
             )
+        elif candidate_correction:
+            latest_signal = (
+                "\n\nThe latest candidate turn corrects an earlier premise. Treat the correction "
+                "as authoritative, acknowledge it briefly, and continue only from the corrected "
+                "fact. Do not repeat or imply the rejected technology, project, or ownership claim."
+            )
+        elif ownership_boundary:
+            latest_signal = (
+                "\n\nThe candidate clearly stated that they did not own that implementation. "
+                "Acknowledge the ownership boundary and use CHANGE_TOPIC. Do not ask them to "
+                "explain another person's change."
+            )
+        elif repeated_topic:
+            latest_signal = (
+                "\n\nThe last two interviewer questions covered the same narrow topic. Use "
+                "CHANGE_TOPIC and select a different competency from the interview plan."
+            )
+        time_signal = ""
+        if seconds_remaining <= 90:
+            time_signal = (
+                "\n\nThis is the final question. Keep it especially concise and do not plan a "
+                "follow-up. The runtime will announce the remaining time and close after the "
+                "candidate answers."
+            )
         base_input = (
+            "SOURCE CONTRACT\nCandidate transcript statements are established interview evidence. "
+            "[RESUME] items require attribution unless confirmed aloud. [JOB] items are role "
+            "requirements, never candidate facts. Do not merge facts across these sources.\n\n"
             f"INTERVIEW PLAN\n{plan}\n\n"
             f"SECONDS REMAINING\n{seconds_remaining}\n\n"
             f"TRANSCRIPT\n{json.dumps(history, ensure_ascii=False)}\n\n"
@@ -233,7 +324,7 @@ class OpenAIInterviewer:
             "close. The runtime replaces ending text with a fixed closing statement. For every "
             "non-ending say field, use exactly this spoken shape: one short context-aware response "
             "sentence, followed by one focused question. Do not add an 'and what', 'and how', or "
-            f"other second question clause.{latest_signal}"
+            f"other second question clause.{latest_signal}{time_signal}"
         )
         issue: str | None = None
         for _ in range(2):
@@ -265,6 +356,12 @@ class OpenAIInterviewer:
                 latest_answer=latest_answer,
                 prior_questions=prior_questions,
             )
+            if (
+                issue is None
+                and force_topic_change
+                and turn.response_mode is not ResponseMode.CHANGE_TOPIC
+            ):
+                issue = "The turn must use CHANGE_TOPIC and leave the current narrow topic."
             if issue is None:
                 return turn
             simplified = _simplify_compound_question(turn)
@@ -281,6 +378,7 @@ class OpenAIInterviewer:
         return _safe_non_repeating_fallback(
             latest_answer=latest_answer,
             prior_questions=prior_questions,
+            force_topic_change=force_topic_change,
         )
 
     async def notes(self, transcript: Sequence[Utterance]) -> InterviewNotes:
@@ -332,6 +430,7 @@ def _safe_non_repeating_fallback(
     *,
     latest_answer: str,
     prior_questions: Sequence[str],
+    force_topic_change: bool = False,
 ) -> NextTurn:
     clarification_requested = is_clarification_request(latest_answer)
     pushback_detected = is_interview_pushback(latest_answer)
@@ -369,49 +468,71 @@ def _safe_non_repeating_fallback(
             should_end=False,
         )
     non_answer = is_non_answer(latest_answer)
-    candidates = (
-        (
+    if force_topic_change:
+        candidates = (
             (
-                "I did not catch enough detail to build on there. Could you briefly describe one "
-                "backend project you personally worked on?",
-                "Backend experience",
-                ResponseMode.NARROW,
-            ),
-            (
-                "That is okay, so let us try a different angle. What backend problem did you enjoy "
-                "solving most?",
-                "Backend problem solving",
+                "Let us move to a different part of your experience. What production issue did "
+                "you personally diagnose?",
+                "Production debugging",
                 ResponseMode.CHANGE_TOPIC,
             ),
             (
-                "We can move to something more concrete. Which backend tool have you used most "
-                "confidently?",
-                "Backend tools",
-                ResponseMode.CHANGE_TOPIC,
-            ),
-        )
-        if non_answer
-        else (
-            (
-                "I would like to understand your role in that work more clearly. What was one "
-                "backend responsibility you personally owned?",
-                "Personal ownership",
-                ResponseMode.NARROW,
-            ),
-            (
-                "You have outlined the area you worked in. What changed because of your "
-                "contribution?",
-                "Impact",
+                "Let us switch to a different competency. What backend tradeoff did you "
+                "personally decide?",
+                "Backend decisions",
                 ResponseMode.CHANGE_TOPIC,
             ),
             (
-                "Let us approach your experience from another angle. What backend problem did you "
-                "enjoy solving most?",
-                "Backend problem solving",
+                "We can leave that topic there. What testing decision gave you confidence in a "
+                "backend change?",
+                "Testing evidence",
                 ResponseMode.CHANGE_TOPIC,
             ),
         )
-    )
+    else:
+        candidates = (
+            (
+                (
+                    "I did not catch enough detail to build on there. Could you briefly describe "
+                    "one backend project you personally worked on?",
+                    "Backend experience",
+                    ResponseMode.NARROW,
+                ),
+                (
+                    "That is okay, so let us try a different angle. What backend problem did you "
+                    "enjoy solving most?",
+                    "Backend problem solving",
+                    ResponseMode.CHANGE_TOPIC,
+                ),
+                (
+                    "We can move to something more concrete. Which backend tool have you used "
+                    "most confidently?",
+                    "Backend tools",
+                    ResponseMode.CHANGE_TOPIC,
+                ),
+            )
+            if non_answer
+            else (
+                (
+                    "I would like to understand your role in that work more clearly. What was "
+                    "one backend responsibility you personally owned?",
+                    "Personal ownership",
+                    ResponseMode.NARROW,
+                ),
+                (
+                    "You have outlined the area you worked in. What changed because of your "
+                    "contribution?",
+                    "Impact",
+                    ResponseMode.CHANGE_TOPIC,
+                ),
+                (
+                    "Let us approach your experience from another angle. What backend problem "
+                    "did you enjoy solving most?",
+                    "Backend problem solving",
+                    ResponseMode.CHANGE_TOPIC,
+                ),
+            )
+        )
     quality = AnswerQuality.NON_ANSWER if non_answer else AnswerQuality.PARTIAL
     for say, topic, response_mode in candidates:
         turn = NextTurn(
@@ -424,7 +545,39 @@ def _safe_non_repeating_fallback(
         )
         if not any(_questions_are_similar(say, prior) for prior in prior_questions):
             return turn
-    return turn
+    say, topic, response_mode = candidates[-1]
+    return NextTurn(
+        say=say,
+        rationale="Use the final safe fallback when every candidate resembles an earlier question.",
+        topic=topic,
+        answer_quality=quality,
+        response_mode=response_mode,
+        should_end=False,
+    )
+
+
+def _recent_questions_share_topic(prior_questions: Sequence[str]) -> bool:
+    if len(prior_questions) < 2:
+        return False
+    previous_terms = _question_topic_terms(prior_questions[-2])
+    latest_terms = _question_topic_terms(prior_questions[-1])
+    if not previous_terms or not latest_terms:
+        return False
+    shared = previous_terms & latest_terms
+    overlap = len(shared) / min(len(previous_terms), len(latest_terms))
+    return len(shared) >= 3 and overlap >= 0.4
+
+
+def _question_topic_terms(text: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return {_light_stem(word) for word in words if len(word) >= 3 and word not in TOPIC_STOP_WORDS}
+
+
+def _light_stem(word: str) -> str:
+    for suffix in ("ing", "ed", "es", "s"):
+        if word.endswith(suffix) and len(word) > len(suffix) + 3:
+            return word[: -len(suffix)]
+    return word
 
 
 def _questions_are_similar(current: str, prior: str) -> bool:

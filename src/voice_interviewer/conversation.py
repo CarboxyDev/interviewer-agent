@@ -6,7 +6,7 @@ from voice_interviewer.domain import ConsentDecision, TranscriptionHints
 
 CONSENT_DISCLOSURE = (
     "Hello, I am an AI interviewer. Before we begin, is it okay if I record this conversation "
-    "and create a transcript for review? You can ask me to stop at any time. Please say yes or no."
+    "and create a transcript for review? You can withdraw recording consent at any time."
 )
 
 CONSENT_DECLINED_CLOSING = (
@@ -22,6 +22,12 @@ CONSENT_WITHDRAWAL_CLOSING = (
 INTERVIEW_CLOSING = (
     "Thank you for your time and for sharing your experience. That concludes the interview. "
     "Your responses have been recorded for review, and you may now leave the meeting."
+)
+
+TIME_LIMIT_CLOSING = (
+    "We have reached the end of our scheduled time. Thank you for sharing your experience. "
+    "That concludes the interview. Your responses have been recorded for review, and you may "
+    "now leave the meeting."
 )
 
 
@@ -70,10 +76,21 @@ UNCLEAR_PATTERNS = (
 )
 WITHDRAWAL_PATTERNS = (
     r"\bstop (the )?recording\b",
-    r"\bstop (the )?interview\b",
+    r"\bstop (the )?interview recording\b",
     r"\bi withdraw (my )?consent\b",
     r"\bdo not record\b",
     r"\bdon't record\b",
+    r"\bdelete (the )?(recording|audio|transcript|interview data)\b",
+)
+INTERVIEW_END_PATTERNS = (
+    r"\b(stop|end|conclude|finish) (this|the) interview\b",
+    r"\bwrap (this|the) interview up\b",
+    r"\bwrap up (this|the) interview\b",
+)
+INTERVIEW_END_NEGATION_PATTERNS = (
+    r"\b(do not|don't|not|never) (stop|end|conclude|finish) (this|the) interview\b",
+    r"\b(do not|don't|not|never) wrap (this|the) interview up\b",
+    r"\b(do not|don't|not|never) wrap up (this|the) interview\b",
 )
 PROTECTED_QUESTION_PATTERNS = (
     r"\bhow old\b",
@@ -124,6 +141,11 @@ INTERVIEW_PUSHBACK_PATTERNS = (
     r"i already (?:told|said|answered|explained)",
     r"as i (?:already )?(?:said|mentioned|explained)",
     r"i just (?:told|said|answered|explained)",
+)
+OWNERSHIP_BOUNDARY_PATTERNS = (
+    r"i (?:did not|didn't) (?:implement|build|change|configure|own|make) (?:this|that|it)",
+    r"(?:this|that|it) was not my (?:work|change|implementation|responsibility)",
+    r"i only (?:diagnosed|investigated|identified|escalated) (?:this|that|it)",
 )
 NON_ANSWER_PATTERNS = (
     r"i (?:do not|don't) know",
@@ -221,6 +243,13 @@ def is_consent_withdrawal(text: str) -> bool:
     return any(re.search(pattern, normalized) for pattern in WITHDRAWAL_PATTERNS)
 
 
+def is_interview_end_request(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text.lower()).strip()
+    if any(re.search(pattern, normalized) for pattern in INTERVIEW_END_NEGATION_PATTERNS):
+        return False
+    return any(re.search(pattern, normalized) for pattern in INTERVIEW_END_PATTERNS)
+
+
 def contains_protected_question(text: str) -> bool:
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
     return any(re.search(pattern, normalized) for pattern in PROTECTED_QUESTION_PATTERNS)
@@ -260,6 +289,11 @@ def is_interview_pushback(text: str) -> bool:
     return any(re.search(pattern, normalized) for pattern in INTERVIEW_PUSHBACK_PATTERNS)
 
 
+def is_ownership_boundary(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    return any(re.search(pattern, normalized) for pattern in OWNERSHIP_BOUNDARY_PATTERNS)
+
+
 def is_non_answer(text: str) -> bool:
     normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
     if not normalized:
@@ -285,16 +319,60 @@ def build_transcription_hints(
     if max_chars <= 0 and keyword_limit <= 0:
         return TranscriptionHints()
 
-    combined = f"{job_description_text}\n{resume_text}"
+    combined = f"{resume_text}\n{job_description_text}"
     keywords = _extract_keywords(combined, keyword_limit)
     prompt = ""
     if max_chars > 0:
-        context = re.sub(r"\s+", " ", combined).strip()[:max_chars]
+        context = _balanced_transcription_context(
+            resume_text=resume_text,
+            job_description_text=job_description_text,
+            max_chars=max_chars,
+        )
         prompt = (
             "English backend job interview. Use the supplied role and resume terminology when "
             f"transcribing names and technical terms. Context: {context}"
         )
     return TranscriptionHints(prompt=prompt, keywords=keywords)
+
+
+def final_question_prompt(text: str) -> str:
+    normalized = re.sub(r"\s+", " ", text).strip()
+    match = re.search(r"([^.!?]*\?)\s*$", normalized)
+    question = match.group(1).strip() if match else f"{normalized.rstrip('.!? ')}?"
+    return f"We are nearly out of time, so one final question. {question}"
+
+
+def _balanced_transcription_context(
+    *,
+    resume_text: str,
+    job_description_text: str,
+    max_chars: int,
+) -> str:
+    resume = re.sub(r"\s+", " ", resume_text).strip()
+    role = re.sub(r"\s+", " ", job_description_text).strip()
+    if not resume:
+        return role[:max_chars]
+    if not role:
+        return _resume_excerpt(resume, max_chars)
+
+    labels_length = len("Resume:  Role: ")
+    content_budget = max(0, max_chars - labels_length)
+    resume_budget = round(content_budget * 0.6)
+    role_budget = content_budget - resume_budget
+    return (f"Resume: {_resume_excerpt(resume, resume_budget)} Role: {role[:role_budget]}")[
+        :max_chars
+    ]
+
+
+def _resume_excerpt(resume: str, max_chars: int) -> str:
+    if len(resume) <= max_chars:
+        return resume
+    experience = re.search(r"\bEXPERIENCE\b", resume)
+    if experience is None:
+        experience = re.search(r"\bexperience\b", resume, re.IGNORECASE)
+    if experience is None:
+        return resume[:max_chars]
+    return resume[experience.start() : experience.start() + max_chars]
 
 
 def _extract_keywords(text: str, limit: int) -> tuple[str, ...]:

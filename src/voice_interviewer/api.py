@@ -73,10 +73,12 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
                 "Provide exactly one of job_description or job_description_text",
             )
         try:
-            request = SessionCreate(
-                meeting_url=meeting_url,
-                duration_minutes=duration_minutes,
-                meeting_authorization_confirmed=meeting_authorization_confirmed,
+            request = SessionCreate.model_validate(
+                {
+                    "meeting_url": meeting_url,
+                    "duration_minutes": duration_minutes,
+                    "meeting_authorization_confirmed": meeting_authorization_confirmed,
+                }
             )
             resume_bytes = await _read_upload(
                 resume,

@@ -20,6 +20,8 @@ finish before the agent plays a guaranteed closing statement.
 - It does not repeat admission requests or bypass admission, CAPTCHA, account, or security checks.
 - It persists recent join attempts and defaults to three attempts per browser profile per hour.
 - It records only after the candidate explicitly consents in the meeting.
+- A request to end the interview keeps the completed outputs. Explicit withdrawal of recording
+  consent stops recording and deletes the recorded content.
 - It does not score candidates or make hiring recommendations.
 - It asks no questions about protected personal characteristics.
 
@@ -60,6 +62,17 @@ curl -X POST http://localhost:8000/v1/interviews \
   -F 'resume=@./resume.pdf' \
   -F 'job_description=@./job-description.txt'
 ```
+
+For demos, place one PDF resume and `backend-job-description.txt` in `input/`, then run:
+
+```bash
+scripts/demo-interview.sh
+```
+
+The launcher prompts for the Meet URL and duration, defaulting to 15 minutes when the duration is
+left blank. It confirms that the meeting owner authorized the bot, then remains attached and prints
+session-state changes until the interview finishes. Audio is heard through Google Meet. Pass the URL
+and duration as optional arguments to skip the prompts.
 
 The host should join first. Prefer a `Trusted` or `Restricted` meeting with the dedicated bot
 account explicitly invited. If Meet presents `Ask to join`, the bot sends one request and waits for

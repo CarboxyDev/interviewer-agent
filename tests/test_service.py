@@ -27,10 +27,12 @@ async def make_service(tmp_path: Path) -> tuple[InterviewService, SqlAlchemySess
 
 async def test_service_enforces_single_active_session_and_deletion(tmp_path: Path) -> None:
     service, repository = await make_service(tmp_path)
-    request = SessionCreate(
-        meeting_url="https://meet.google.com/abc-defg-hij",
-        duration_minutes=15,
-        meeting_authorization_confirmed=True,
+    request = SessionCreate.model_validate(
+        {
+            "meeting_url": "https://meet.google.com/abc-defg-hij",
+            "duration_minutes": 15,
+            "meeting_authorization_confirmed": True,
+        }
     )
     created = await service.create(
         request,
@@ -58,9 +60,11 @@ async def test_service_enforces_single_active_session_and_deletion(tmp_path: Pat
 
 async def test_service_rejects_bad_documents(tmp_path: Path) -> None:
     service, repository = await make_service(tmp_path)
-    request = SessionCreate(
-        meeting_url="https://meet.google.com/abc-defg-hij",
-        meeting_authorization_confirmed=True,
+    request = SessionCreate.model_validate(
+        {
+            "meeting_url": "https://meet.google.com/abc-defg-hij",
+            "meeting_authorization_confirmed": True,
+        }
     )
     with pytest.raises(DocumentError, match="PDF, DOCX, or TXT"):
         await service.create(

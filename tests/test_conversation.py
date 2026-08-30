@@ -1,12 +1,16 @@
 from voice_interviewer.conversation import (
+    CONSENT_DISCLOSURE,
     build_transcription_hints,
     classify_consent,
     contains_protected_question,
+    final_question_prompt,
     interview_opening,
     is_clarification_request,
     is_consent_withdrawal,
+    is_interview_end_request,
     is_interview_pushback,
     is_non_answer,
+    is_ownership_boundary,
     is_repeat_request,
     is_thinking_request,
     repeat_prompt,
@@ -25,6 +29,11 @@ def test_consent_requires_clear_affirmation() -> None:
     assert classify_consent("I am not sure") is ConsentDecision.UNCLEAR
 
 
+def test_consent_disclosure_does_not_force_yes_or_no_wording() -> None:
+    assert "Please say yes or no" not in CONSENT_DISCLOSURE
+    assert CONSENT_DISCLOSURE.endswith("You can withdraw recording consent at any time.")
+
+
 def test_interview_opening_uses_the_configured_duration() -> None:
     assert "about 30 minutes" in interview_opening(30)
     assert "about 5 minutes" in interview_opening(5)
@@ -39,11 +48,22 @@ def test_decline_wins_over_ambiguous_yes() -> None:
 
 def test_withdrawal_and_protected_question_guards() -> None:
     assert is_consent_withdrawal("Please stop the recording now")
+    assert is_consent_withdrawal("Please stop the interview recording")
     assert is_consent_withdrawal("I withdraw my consent")
+    assert is_consent_withdrawal("Delete the recording")
+    assert not is_consent_withdrawal("Please stop the interview")
     assert not is_consent_withdrawal("Please repeat the question")
     assert contains_protected_question("How old are you?")
     assert contains_protected_question("Are you married?")
     assert not contains_protected_question("How did you design that API?")
+
+
+def test_interview_end_requests_are_distinct_from_consent_withdrawal() -> None:
+    assert is_interview_end_request("Please stop the interview")
+    assert is_interview_end_request("Can we end this interview?")
+    assert is_interview_end_request("Let us wrap up the interview")
+    assert not is_interview_end_request("Please stop the recording")
+    assert not is_interview_end_request("Do not stop the interview")
 
 
 def test_transcription_hints_prioritize_repeated_role_terms_and_are_bounded() -> None:
@@ -58,6 +78,31 @@ def test_transcription_hints_prioritize_repeated_role_terms_and_are_bounded() ->
     assert len(hints.keywords) == 4
     assert "English backend job interview" in hints.prompt
     assert len(hints.prompt) <= 220
+
+
+def test_transcription_context_includes_resume_experience_and_role_text() -> None:
+    hints = build_transcription_hints(
+        resume_text=(
+            "Arman Ganjoo SUMMARY Backend engineer. EXPERIENCE Sapper AI Software Engineer "
+            "building accounts payable workflows."
+        ),
+        job_description_text="Backend role using Python APIs and distributed systems.",
+        max_chars=100,
+        keyword_limit=10,
+    )
+
+    assert "Sapper AI" in hints.prompt
+    assert "Role:" in hints.prompt
+
+
+def test_final_question_prompt_announces_the_time_boundary() -> None:
+    prompt = final_question_prompt(
+        "You described the cache diagnosis. What did you personally change?"
+    )
+
+    assert prompt == (
+        "We are nearly out of time, so one final question. What did you personally change?"
+    )
 
 
 def test_unclear_transcript_detection_is_conservative() -> None:
@@ -101,3 +146,9 @@ def test_candidate_clarification_and_pushback_are_recognized() -> None:
     assert is_interview_pushback("I already told you that.")
     assert is_interview_pushback("As I mentioned, it was Spring Boot.")
     assert not is_interview_pushback("I already implemented the endpoint.")
+
+
+def test_candidate_ownership_boundary_is_recognized() -> None:
+    assert is_ownership_boundary("So I didn't change this myself, so I can't comment.")
+    assert is_ownership_boundary("That was not my implementation.")
+    assert not is_ownership_boundary("I implemented the cache change myself.")
