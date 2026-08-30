@@ -135,3 +135,20 @@ def test_api_downloads_artifact_archive(tmp_path: Path) -> None:
         assert download.status_code == 200
         with zipfile.ZipFile(io.BytesIO(download.content)) as archive:
             assert archive.namelist() == ["transcript.md"]
+
+
+def test_api_defaults_to_30_minutes(tmp_path: Path) -> None:
+    runtime = make_runtime(tmp_path)
+    with TestClient(create_app(runtime)) as client:
+        response = client.post(
+            "/v1/interviews",
+            data={
+                "meeting_url": "https://meet.google.com/abc-defg-hij",
+                "meeting_authorization_confirmed": "true",
+                "job_description_text": "Backend role",
+            },
+            files={"resume": ("resume.txt", b"Python backend engineer", "text/plain")},
+        )
+
+        assert response.status_code == 202
+        assert response.json()["duration_minutes"] == 30

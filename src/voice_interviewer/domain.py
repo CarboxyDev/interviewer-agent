@@ -106,7 +106,7 @@ class SessionCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     meeting_url: HttpUrl
-    duration_minutes: int = Field(default=15, ge=5, le=45)
+    duration_minutes: int = Field(default=30, ge=5, le=45)
     meeting_authorization_confirmed: bool
 
     @field_validator("meeting_url")

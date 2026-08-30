@@ -63,7 +63,7 @@ def start_interview(
         bool,
         typer.Option(help="Confirm the meeting owner authorized the bot"),
     ] = False,
-    duration_minutes: Annotated[int, typer.Option(min=5, max=45)] = 15,
+    duration_minutes: Annotated[int, typer.Option(min=5, max=45)] = 30,
     server: Annotated[str, typer.Option()] = "http://127.0.0.1:8000",
 ) -> None:
     """Submit a new interview to the running service."""

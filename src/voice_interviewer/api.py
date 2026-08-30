@@ -62,7 +62,7 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
         meeting_url: Annotated[str, Form()],
         meeting_authorization_confirmed: Annotated[bool, Form()],
         resume: Annotated[UploadFile, File()],
-        duration_minutes: Annotated[int, Form()] = 15,
+        duration_minutes: Annotated[int, Form()] = 30,
         job_description: Annotated[UploadFile | None, File()] = None,
         job_description_text: Annotated[str | None, Form()] = None,
     ) -> SessionView:

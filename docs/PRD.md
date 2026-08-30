@@ -10,7 +10,7 @@ initiate a natural interview, and save consented outputs locally.
 - One adult candidate and one bot
 - English only
 - One active interview per service instance
-- 5 to 45 minutes, default 15
+- 5 to 45 minutes, default 30
 - Resume and job description in PDF, DOCX, or TXT
 - Dedicated or guest Google Meet participant named `AI Interviewer`
 - Direct invited-account admission with one-shot `Ask to join` fallback

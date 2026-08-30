@@ -1,5 +1,7 @@
 # Interviewer Voice Agent
 
+[![CI](https://github.com/CarboxyDev/interviewer-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/CarboxyDev/interviewer-agent/actions/workflows/ci.yml)
+
 A consent-first, Python-first voice interviewer that joins Google Meet as a guest and runs an
 explicit STT to LLM to TTS cascade. It produces an audio recording, speaker-labelled transcript,
 session metadata, and evidence-based notes.
@@ -54,7 +56,7 @@ Create an interview:
 curl -X POST http://localhost:8000/v1/interviews \
   -F 'meeting_url=https://meet.google.com/abc-defg-hij' \
   -F 'meeting_authorization_confirmed=true' \
-  -F 'duration_minutes=15' \
+  -F 'duration_minutes=30' \
   -F 'resume=@./resume.pdf' \
   -F 'job_description=@./job-description.txt'
 ```

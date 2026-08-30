@@ -13,6 +13,15 @@ def test_meet_url_is_validated_and_canonicalized() -> None:
     assert str(request.meeting_url) == "https://meet.google.com/abc-defg-hij"
 
 
+def test_interview_duration_defaults_to_30_minutes() -> None:
+    request = SessionCreate(
+        meeting_url="https://meet.google.com/abc-defg-hij",
+        meeting_authorization_confirmed=True,
+    )
+
+    assert request.duration_minutes == 30
+
+
 @pytest.mark.parametrize(
     ("url", "authorized"),
     [
