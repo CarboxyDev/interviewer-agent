@@ -31,13 +31,10 @@ TIME_LIMIT_CLOSING = (
 )
 
 
-def interview_opening(duration_minutes: int) -> str:
+def interview_opening() -> str:
     return (
-        f"Thank you. This interview is planned for about {duration_minutes} minutes. I will begin "
-        "with a brief overview, then ask focused questions about your backend experience and "
-        "technical decisions. Please ask me to repeat anything that is unclear, and take a moment "
-        "to think when needed. To start, please give me a brief overview of your recent backend "
-        "work."
+        "Thank you. To begin, please give me a brief overview of your recent work most relevant "
+        "to this role."
     )
 
 

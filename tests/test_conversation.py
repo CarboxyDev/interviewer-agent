@@ -34,9 +34,12 @@ def test_consent_disclosure_does_not_force_yes_or_no_wording() -> None:
     assert CONSENT_DISCLOSURE.endswith("You can withdraw recording consent at any time.")
 
 
-def test_interview_opening_uses_the_configured_duration() -> None:
-    assert "about 30 minutes" in interview_opening(30)
-    assert "about 5 minutes" in interview_opening(5)
+def test_interview_opening_is_brief_and_role_neutral() -> None:
+    assert interview_opening() == (
+        "Thank you. To begin, please give me a brief overview of your recent work most relevant "
+        "to this role."
+    )
+    assert "backend" not in interview_opening().lower()
 
 
 def test_decline_wins_over_ambiguous_yes() -> None:

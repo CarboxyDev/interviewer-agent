@@ -115,7 +115,7 @@ async def test_runner_completes_consented_interview_with_barge_in(tmp_path: Path
     assert audio.stops >= 2
     transcript_path = artifacts.session_dir(str(session.id)) / "transcript.json"
     utterances = json.loads(transcript_path.read_text())
-    assert utterances[2]["text"] == interview_opening(5)
+    assert utterances[2]["text"] == interview_opening()
     assert utterances[3]["text"] == (
         "Let me think I currently build backend APIs and data pipelines."
     )

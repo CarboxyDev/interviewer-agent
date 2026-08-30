@@ -334,7 +334,7 @@ class ConversationRunner:
         )
         started = time.monotonic()
         duration_seconds = duration_minutes * 60
-        opening = interview_opening(duration_minutes)
+        opening = interview_opening()
         opening_started = int((time.monotonic() - started) * 1000)
         transcript.append(Utterance(Speaker.INTERVIEWER, opening, opening_started, opening_started))
         opening_response = await self._say_and_receive(
