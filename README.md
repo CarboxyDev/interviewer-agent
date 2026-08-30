@@ -7,37 +7,6 @@ signed-in bot account. It uses a cascading speech-to-text, LLM, and text-to-spee
 adaptive interviews and produce a recording, speaker-labelled transcript, latency metrics, and
 evidence-based notes.
 
-## Reviewer guide
-
-Run the complete quality gate without Google or OpenAI credentials:
-
-```bash
-uv sync --all-groups
-make check
-```
-
-The project uses an async modular monolith with explicit ports for Meet, audio, transcription,
-interview generation, persistence, and artifacts. This keeps the interview behavior testable
-without browser automation, audio devices, or paid API calls.
-
-Useful review documents:
-
-- [Architecture](docs/architecture.md): module boundaries, audio topology, and state machine
-- [Product requirements](docs/PRD.md): scope, behavior, non-goals, and acceptance criteria
-- [Configuration](docs/configuration.md): environment settings and operational controls
-
-## Repository map
-
-| Area | Responsibility |
-| --- | --- |
-| `service.py` | Validates requests, persists inputs, and starts one interview session |
-| `runner.py` | Orchestrates preparation, Meet, consent, conversation, and finalization |
-| `conversation.py` | Builds transcription hints and deterministic conversation guards |
-| `meet.py` and `audio.py` | Control the signed-in Meet participant and isolated audio paths |
-| `openai_adapters.py` | Implements STT, interviewer, and TTS provider adapters |
-| `persistence.py` and `artifacts.py` | Store session state and consented outputs |
-| `api.py` and `cli.py` | Provide local control surfaces |
-
 ## Quick start
 
 Requirements: Docker Desktop, an OpenAI API key, a dedicated Google bot account, and an authorized
@@ -84,6 +53,17 @@ through the local FastAPI routes documented at `http://127.0.0.1:8000/docs`.
 SQLite stores session state in `data/interviewer.db`; consented outputs are written under
 `data/sessions/`. Both locations are excluded from Git. Artifacts and metrics can be retrieved
 through either the CLI or the loopback-only API.
+
+## Architecture
+
+The service is an async modular monolith with explicit boundaries for Meet, audio, transcription,
+interview generation, persistence, and artifacts. The live interview runs as a cascading STT,
+LLM, and TTS pipeline with isolated input and output audio.
+
+![Core architecture](docs/system-architecture.png)
+
+More detail is available in the [architecture](docs/architecture.md),
+[product requirements](docs/PRD.md), and [configuration](docs/configuration.md) documents.
 
 ## Local development
 

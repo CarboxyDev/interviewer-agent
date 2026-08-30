@@ -9,10 +9,10 @@ calls.
 ```text
 FastAPI / Typer
       |
-InterviewService -> InterviewRunner -> ConversationEngine
-      |                    |                  |
-SessionRepository     MeetTransport      STT -> LLM -> TTS
-ArtifactStore         AudioRouter
+InterviewService -> ConversationRunner
+      |              |       |       |
+SessionRepository   Meet   Audio   STT -> LLM -> TTS
+ArtifactStore
 ```
 
 ## Core ports
