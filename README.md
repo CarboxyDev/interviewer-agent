@@ -25,7 +25,6 @@ Useful review documents:
 - [Architecture](docs/architecture.md): module boundaries, audio topology, and state machine
 - [Product requirements](docs/PRD.md): scope, behavior, non-goals, and acceptance criteria
 - [Configuration](docs/configuration.md): environment settings and operational controls
-- [SQLite decision](docs/decisions/0001-sqlite-for-local-v1.md): persistence rationale
 
 ## Repository map
 
