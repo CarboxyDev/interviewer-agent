@@ -4,6 +4,7 @@ from voice_interviewer.conversation import (
     contains_protected_question,
     interview_opening,
     is_consent_withdrawal,
+    is_non_answer,
     is_repeat_request,
     is_thinking_request,
     repeat_prompt,
@@ -72,6 +73,14 @@ def test_short_thinking_requests_are_not_complete_answers() -> None:
     assert is_thinking_request("I basically")
     assert not is_thinking_request("Let me think through how I used Kafka for delivery")
     assert not is_thinking_request("I think we used idempotency keys")
+
+
+def test_non_answer_detection_does_not_reject_substantive_conversational_answers() -> None:
+    assert is_non_answer("I don't know")
+    assert is_non_answer("Yeah")
+    assert is_non_answer("Nothing useful really")
+    assert not is_non_answer("Yeah, I built a FastAPI service")
+    assert not is_non_answer("I used Kafka")
 
 
 def test_repeat_requests_are_recognized_and_question_is_replayed_naturally() -> None:

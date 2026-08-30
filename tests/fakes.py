@@ -5,9 +5,11 @@ from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 
 from voice_interviewer.domain import (
+    AnswerQuality,
     InterviewNotes,
     JoinOutcome,
     NextTurn,
+    ResponseMode,
     SessionState,
     SpeechEvent,
     TranscriptionHints,
@@ -136,12 +138,16 @@ class FakeInterviewer:
                 say="Tell me about an API you designed.",
                 rationale="Gather relevant evidence.",
                 topic="API design",
+                answer_quality=AnswerQuality.SUBSTANTIVE,
+                response_mode=ResponseMode.FOLLOW_UP,
                 should_end=False,
             )
         return NextTurn(
             say="What if the external call succeeded but the database write failed?",
             rationale="Simulate a malformed ending turn from the model.",
             topic="Close",
+            answer_quality=AnswerQuality.SUBSTANTIVE,
+            response_mode=ResponseMode.END,
             should_end=True,
         )
 

@@ -11,11 +11,14 @@ from typing import Any, cast
 import websockets
 from openai import AsyncOpenAI, OpenAIError
 
-from voice_interviewer.conversation import contains_protected_question
+from voice_interviewer.conversation import contains_protected_question, is_non_answer
 from voice_interviewer.domain import (
+    AnswerQuality,
     FailureCode,
     InterviewNotes,
     NextTurn,
+    ResponseMode,
+    Speaker,
     SpeechEvent,
     SpeechEventKind,
     TranscriptionHints,
@@ -27,8 +30,13 @@ REALTIME_TRANSCRIPTION_URL = "wss://api.openai.com/v1/realtime?intent=transcript
 REALTIME_HANDSHAKE_TIMEOUT_SECONDS = 10
 
 MAX_SPOKEN_QUESTION_WORDS = 35
-QUESTION_LEAD_PATTERN = re.compile(
-    r"\b(?:what|how|why|when|where|which|who|describe|explain|tell me|walk me through)\b",
+MULTIPLE_QUESTION_PATTERN = re.compile(
+    r"(?:,\s*|\band\s+)(?:and\s+)?"
+    r"(?:what|how|why|when|where|which|who|describe|explain|tell me|walk me through)\b",
+    re.IGNORECASE,
+)
+GENERIC_ACKNOWLEDGMENT_PATTERN = re.compile(
+    r"^(?:thank you|thanks|great|good|interesting|that (?:is|was|gives me)|useful context)\b",
     re.IGNORECASE,
 )
 
@@ -40,9 +48,11 @@ ask about one decision now and use later turns for follow-up. Prefer concrete ex
 progressive depth over trivia or exhaustive cross-examination. Use no more than two follow-ups on
 the same narrow topic unless the candidate is clearly comfortable and adding useful evidence. If
 the candidate says they do not know or that a task is difficult verbally, narrow it once or move to
-another topic. Before each question, naturally acknowledge one concrete detail from the candidate's
-latest answer in one short, neutral sentence. Avoid generic praise or evaluating the answer. Adapt
-to the resume, job description, and earlier answers. Cover experience,
+another topic. Assess the latest answer before responding. A substantive or partial answer gets a
+short, neutral acknowledgment grounded in one concrete detail. An unclear response or non-answer
+gets a natural clarification, narrower prompt, or topic change without pretending it supplied useful
+information. Never use generic filler such as "thanks, that gives me useful context." Adapt to the
+resume, job description, and earlier answers. Cover experience,
 technical depth, decisions, tradeoffs, and realistic scenarios across the interview. Never ask
 about age, family status, health, religion, race, ethnicity, sexuality, disability, citizenship, or
 any other protected personal characteristic. Never score the candidate or make a hiring
@@ -52,23 +62,46 @@ If an answer is unclear, ask a neutral clarification rather than guessing. When 
 should_end true and do not ask another question. The runtime supplies the closing statement."""
 
 
-def spoken_turn_issue(turn: NextTurn) -> str | None:
+def spoken_turn_issue(turn: NextTurn, *, latest_answer: str = "") -> str | None:
     if turn.should_end:
+        if turn.response_mode is not ResponseMode.END:
+            return "An ending turn must use END response mode."
         return None
+    if turn.response_mode is ResponseMode.END:
+        return "A non-ending turn cannot use END response mode."
+    detected_non_answer = is_non_answer(latest_answer)
+    if detected_non_answer and turn.answer_quality not in {
+        AnswerQuality.UNCLEAR,
+        AnswerQuality.NON_ANSWER,
+    }:
+        return "The latest response is a non-answer. Do not treat it as substantive."
+    if turn.answer_quality in {AnswerQuality.UNCLEAR, AnswerQuality.NON_ANSWER} and (
+        turn.response_mode
+        not in {
+            ResponseMode.CLARIFY,
+            ResponseMode.NARROW,
+            ResponseMode.CHANGE_TOPIC,
+        }
+    ):
+        return "An unclear response or non-answer requires recovery instead of a follow-up."
     text = re.sub(r"\s+", " ", turn.say).strip()
     if contains_protected_question(text):
         return "The question asks about a protected personal characteristic."
     if text.count("?") != 1 or not text.endswith("?"):
         return "The spoken turn must contain exactly one question ending with one question mark."
-    if "." not in text[: text.index("?")]:
-        return "Begin with one short acknowledgment sentence before the focused question."
+    question_index = text.index("?")
+    preface, _, question = text[:question_index].rpartition(".")
+    if not preface or not question.strip():
+        return "Begin with one short natural response sentence before the focused question."
+    if GENERIC_ACKNOWLEDGMENT_PATTERN.search(preface.strip()):
+        return "Replace the generic acknowledgment with a response grounded in the latest answer."
     if len(text.split()) > MAX_SPOKEN_QUESTION_WORDS:
         return f"The question exceeds {MAX_SPOKEN_QUESTION_WORDS} spoken words."
-    if len(QUESTION_LEAD_PATTERN.findall(text)) > 1:
+    if MULTIPLE_QUESTION_PATTERN.search(question):
         return "The turn contains multiple question prompts. Ask for one answer target only."
-    if re.search(r"\b(?:including|covering|addressing)\b", text, re.IGNORECASE):
+    if re.search(r"\b(?:including|covering|addressing)\b", question, re.IGNORECASE):
         return "The question requests a bundled list of design dimensions."
-    if text.count(",") >= 2:
+    if question.count(",") >= 2:
         return "The question contains a multi-part spoken list."
     return None
 
@@ -121,11 +154,18 @@ class OpenAIInterviewer:
         seconds_remaining: int,
     ) -> NextTurn:
         history = [{"speaker": item.speaker.value, "text": item.text} for item in transcript[-20:]]
+        latest_answer = next(
+            (item.text for item in reversed(transcript) if item.speaker is Speaker.CANDIDATE),
+            "",
+        )
         base_input = (
             f"INTERVIEW PLAN\n{plan}\n\n"
             f"SECONDS REMAINING\n{seconds_remaining}\n\n"
             f"TRANSCRIPT\n{json.dumps(history, ensure_ascii=False)}\n\n"
-            "Choose the next spoken turn. Set should_end true only when the interview should "
+            "First classify the latest candidate answer. Then choose the next spoken turn. If it "
+            "is unclear or a non-answer, do not advance as if evidence was provided. Respond "
+            "naturally with CLARIFY, NARROW, or CHANGE_TOPIC. Use FOLLOW_UP only for substantive "
+            "or partial content. Set should_end true with END mode only when the interview should "
             "close. The runtime replaces ending text with a fixed closing statement."
         )
         issue: str | None = None
@@ -153,16 +193,30 @@ class OpenAIInterviewer:
             except OpenAIError as exc:
                 raise _provider_error("question generation", exc) from exc
             turn = NextTurn.model_validate_json(response.output_text)
-            issue = spoken_turn_issue(turn)
+            issue = spoken_turn_issue(turn, latest_answer=latest_answer)
             if issue is None:
                 return turn
+        if is_non_answer(latest_answer):
+            return NextTurn(
+                say=(
+                    "I did not catch enough detail to build on there. Could you briefly describe "
+                    "one backend project you personally worked on?"
+                ),
+                rationale="Recover safely from a non-answer after invalid generated turns.",
+                topic="Backend experience",
+                answer_quality=AnswerQuality.NON_ANSWER,
+                response_mode=ResponseMode.NARROW,
+                should_end=False,
+            )
         return NextTurn(
             say=(
-                "Thank you, that gives me useful context. What was one important technical "
-                "decision you personally made in that work?"
+                "I would like to understand your role in that work more clearly. What was one "
+                "backend responsibility you personally owned?"
             ),
-            rationale="Use a safe focused fallback after invalid generated turns.",
-            topic="Technical decision",
+            rationale="Use a neutral fallback without claiming unsupported evidence.",
+            topic="Personal ownership",
+            answer_quality=AnswerQuality.PARTIAL,
+            response_mode=ResponseMode.NARROW,
             should_end=False,
         )
 

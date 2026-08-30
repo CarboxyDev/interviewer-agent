@@ -111,6 +111,16 @@ REPEAT_REQUEST_PATTERNS = (
     r"(?:that|the question|you)",
     r"what was the question(?: again)?",
 )
+NON_ANSWER_PATTERNS = (
+    r"i (?:do not|don't) know",
+    r"i(?:'m| am) not sure",
+    r"no idea",
+    r"i (?:cannot|can't|couldn't|could not) answer",
+    r"i have no answer",
+    r"nothing (?:useful|specific|really)?",
+    r"(?:i )?(?:want to )?pass",
+    r"^(?:okay|ok|yeah|yes|no|thanks|thank you|um+|uh+|h+m+)$",
+)
 KEYWORD_PATTERN = re.compile(r"\b[A-Za-z][A-Za-z0-9.+#/-]{2,49}\b")
 KEYWORD_STOP_WORDS = {
     "all",
@@ -224,6 +234,15 @@ def is_thinking_request(text: str) -> bool:
 def is_repeat_request(text: str) -> bool:
     normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
     return any(re.fullmatch(pattern, normalized) for pattern in REPEAT_REQUEST_PATTERNS)
+
+
+def is_non_answer(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    if not normalized:
+        return True
+    if any(re.search(pattern, normalized) for pattern in NON_ANSWER_PATTERNS):
+        return True
+    return len(re.findall(r"[a-z0-9]+", normalized)) < 3
 
 
 def repeat_prompt(text: str) -> str:

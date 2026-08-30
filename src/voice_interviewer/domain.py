@@ -104,6 +104,21 @@ class ConsentDecision(StrEnum):
     UNCLEAR = "UNCLEAR"
 
 
+class AnswerQuality(StrEnum):
+    SUBSTANTIVE = "SUBSTANTIVE"
+    PARTIAL = "PARTIAL"
+    UNCLEAR = "UNCLEAR"
+    NON_ANSWER = "NON_ANSWER"
+
+
+class ResponseMode(StrEnum):
+    FOLLOW_UP = "FOLLOW_UP"
+    CLARIFY = "CLARIFY"
+    NARROW = "NARROW"
+    CHANGE_TOPIC = "CHANGE_TOPIC"
+    END = "END"
+
+
 class SessionCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -190,6 +205,8 @@ class NextTurn(BaseModel):
     say: str = Field(min_length=1, max_length=800)
     rationale: str = Field(min_length=1, max_length=500)
     topic: str = Field(min_length=1, max_length=100)
+    answer_quality: AnswerQuality
+    response_mode: ResponseMode
     should_end: bool
 
 

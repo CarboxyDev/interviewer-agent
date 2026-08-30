@@ -2,7 +2,15 @@ import json
 from types import SimpleNamespace
 from typing import Any, cast
 
-from voice_interviewer.domain import NextTurn, SpeechEventKind, TranscriptionHints
+from voice_interviewer.domain import (
+    AnswerQuality,
+    NextTurn,
+    ResponseMode,
+    Speaker,
+    SpeechEventKind,
+    TranscriptionHints,
+    Utterance,
+)
 from voice_interviewer.openai_adapters import (
     REALTIME_TRANSCRIPTION_URL,
     OpenAIInterviewer,
@@ -84,9 +92,11 @@ def test_provider_error_preserves_safe_detail_and_redacts_keys() -> None:
 
 def test_spoken_turn_guard_rejects_bundled_questions() -> None:
     bundled = NextTurn(
-        say="What did you build, and how did you test it?",
+        say="You mentioned API delivery. What did you build, and how did you test it?",
         rationale="Probe implementation and testing.",
         topic="Backend project",
+        answer_quality=AnswerQuality.SUBSTANTIVE,
+        response_mode=ResponseMode.FOLLOW_UP,
         should_end=False,
     )
     focused = NextTurn(
@@ -96,11 +106,35 @@ def test_spoken_turn_guard_rejects_bundled_questions() -> None:
         ),
         rationale="Probe one decision.",
         topic="Backend decision",
+        answer_quality=AnswerQuality.SUBSTANTIVE,
+        response_mode=ResponseMode.FOLLOW_UP,
         should_end=False,
     )
 
-    assert spoken_turn_issue(bundled) is not None
-    assert spoken_turn_issue(focused) is None
+    assert spoken_turn_issue(bundled, latest_answer="I built a payment API.") is not None
+    assert spoken_turn_issue(focused, latest_answer="I built a payment API.") is None
+
+
+def test_spoken_turn_guard_rejects_false_generic_acknowledgment_for_non_answer() -> None:
+    generic = NextTurn(
+        say="Thanks, that gives me useful context. What database did you use?",
+        rationale="Continue the plan.",
+        topic="Databases",
+        answer_quality=AnswerQuality.SUBSTANTIVE,
+        response_mode=ResponseMode.FOLLOW_UP,
+        should_end=False,
+    )
+    recovery = NextTurn(
+        say="I did not catch a concrete example there. Could you describe one backend project?",
+        rationale="Ask for a usable example.",
+        topic="Backend experience",
+        answer_quality=AnswerQuality.NON_ANSWER,
+        response_mode=ResponseMode.NARROW,
+        should_end=False,
+    )
+
+    assert spoken_turn_issue(generic, latest_answer="I don't know") is not None
+    assert spoken_turn_issue(recovery, latest_answer="I don't know") is None
 
 
 async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
@@ -109,6 +143,8 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
             say="What did you build, and how did you test it?",
             rationale="Probe implementation and testing.",
             topic="Backend project",
+            answer_quality=AnswerQuality.SUBSTANTIVE,
+            response_mode=ResponseMode.FOLLOW_UP,
             should_end=False,
         ).model_dump_json(),
         NextTurn(
@@ -118,6 +154,8 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
             ),
             rationale="Probe one decision.",
             topic="Backend decision",
+            answer_quality=AnswerQuality.SUBSTANTIVE,
+            response_mode=ResponseMode.FOLLOW_UP,
             should_end=False,
         ).model_dump_json(),
     ]
@@ -140,7 +178,7 @@ async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
 
     turn = await interviewer.next_turn(
         plan="Ask about backend decisions.",
-        transcript=[],
+        transcript=[Utterance(Speaker.CANDIDATE, "I built a payment API.", 0, 1)],
         seconds_remaining=300,
     )
 

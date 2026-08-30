@@ -32,7 +32,9 @@ initiate a natural interview, and save consented outputs locally.
 4. After consent, state the approximate configured duration, explain the interview format, and
    begin with a short background question.
 5. Adapt follow-ups to the resume, job description, and prior answers.
-6. Briefly acknowledge one concrete detail from the latest answer before each focused question.
+6. For a substantive answer, briefly acknowledge one concrete detail before the next focused
+   question. For an unclear response or non-answer, acknowledge the gap naturally and clarify,
+   narrow, or change topic without inventing useful context.
 7. Ask one concise, verbally answerable question with one answer target at a time.
 8. Split broad design exercises into progressive questions about individual decisions.
 9. Narrow once or change topics when the candidate says they do not know or finds a task difficult
@@ -72,7 +74,8 @@ initiate a natural interview, and save consented outputs locally.
 - Duplicate completed STT events never become duplicate candidate utterances.
 - Clearly inaudible transcription triggers one configurable repeat request.
 - The post-consent opening explains the format before technical questioning begins.
-- Each generated follow-up starts with a short, neutral acknowledgment of the latest answer.
+- Each generated follow-up responds to the assessed answer quality. It grounds substantive
+  acknowledgments in a concrete detail and never praises or advances from a non-answer.
 - A generated multi-part or oversized spoken question is repaired once, then replaced by a safe
   focused fallback if still invalid.
 - Candidate departure results in `STOPPED`, not `FAILED`, with available partial artifacts.
