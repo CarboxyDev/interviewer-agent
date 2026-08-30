@@ -111,6 +111,20 @@ REPEAT_REQUEST_PATTERNS = (
     r"(?:that|the question|you)",
     r"what was the question(?: again)?",
 )
+CLARIFICATION_REQUEST_PATTERNS = (
+    r"(?:what|which) do you mean",
+    r"(?:do|did) you mean",
+    r"(?:does|would) (?:this|that) include",
+    r"(?:work|professional).{0,50}(?:personal|side) project",
+    r"(?:personal|side) project.{0,50}(?:work|professional)",
+    r"(?:i(?:'m| am) )?not sure i understand (?:what|the question|you(?:'re| are) asking)",
+    r"what (?:exactly )?are you asking",
+)
+INTERVIEW_PUSHBACK_PATTERNS = (
+    r"i already (?:told|said|answered|explained)",
+    r"as i (?:already )?(?:said|mentioned|explained)",
+    r"i just (?:told|said|answered|explained)",
+)
 NON_ANSWER_PATTERNS = (
     r"i (?:do not|don't) know",
     r"i(?:'m| am) not sure",
@@ -234,6 +248,16 @@ def is_thinking_request(text: str) -> bool:
 def is_repeat_request(text: str) -> bool:
     normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
     return any(re.fullmatch(pattern, normalized) for pattern in REPEAT_REQUEST_PATTERNS)
+
+
+def is_clarification_request(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    return any(re.search(pattern, normalized) for pattern in CLARIFICATION_REQUEST_PATTERNS)
+
+
+def is_interview_pushback(text: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    return any(re.search(pattern, normalized) for pattern in INTERVIEW_PUSHBACK_PATTERNS)
 
 
 def is_non_answer(text: str) -> bool:

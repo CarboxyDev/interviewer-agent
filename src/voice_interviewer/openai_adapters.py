@@ -12,7 +12,12 @@ from typing import Any, cast
 import websockets
 from openai import AsyncOpenAI, OpenAIError
 
-from voice_interviewer.conversation import contains_protected_question, is_non_answer
+from voice_interviewer.conversation import (
+    contains_protected_question,
+    is_clarification_request,
+    is_interview_pushback,
+    is_non_answer,
+)
 from voice_interviewer.domain import (
     AnswerQuality,
     FailureCode,
@@ -71,7 +76,9 @@ If an answer is unclear, ask a neutral clarification rather than guessing. When 
 should_end true and do not ask another question. Never ask substantially the same question twice
 unless the candidate explicitly requested a repeat. After one clarification or narrowing attempt
 on a topic, accommodate a still-generic answer by changing angle or topic. The runtime supplies the
-closing statement."""
+closing statement. If the candidate asks what a question means or whether a work or personal
+example is acceptable, answer that clarification directly and then ask one rephrased question. If
+the candidate says they already answered, acknowledge the pushback once and change angle."""
 
 
 def spoken_turn_issue(
@@ -86,7 +93,20 @@ def spoken_turn_issue(
         return None
     if turn.response_mode is ResponseMode.END:
         return "A non-ending turn cannot use END response mode."
-    detected_non_answer = is_non_answer(latest_answer)
+    clarification_requested = is_clarification_request(latest_answer)
+    pushback_detected = is_interview_pushback(latest_answer)
+    if clarification_requested and (
+        turn.answer_quality is not AnswerQuality.UNCLEAR
+        or turn.response_mode is not ResponseMode.CLARIFY
+    ):
+        return (
+            "The candidate asked for clarification. Answer it directly using UNCLEAR and CLARIFY."
+        )
+    if pushback_detected and turn.response_mode is not ResponseMode.CHANGE_TOPIC:
+        return "The candidate says they already answered. Acknowledge it and change angle or topic."
+    detected_non_answer = (
+        is_non_answer(latest_answer) and not clarification_requested and not pushback_detected
+    )
     if detected_non_answer and turn.answer_quality not in {
         AnswerQuality.UNCLEAR,
         AnswerQuality.NON_ANSWER,
@@ -119,7 +139,9 @@ def spoken_turn_issue(
         return "The question requests a bundled list of design dimensions."
     if question.count(",") >= 2:
         return "The question contains a multi-part spoken list."
-    if any(_questions_are_similar(text, prior) for prior in prior_questions):
+    if not clarification_requested and any(
+        _questions_are_similar(text, prior) for prior in prior_questions
+    ):
         return "This substantially repeats an earlier question. Change angle or topic."
     return None
 
@@ -180,7 +202,26 @@ class OpenAIInterviewer:
             item.text
             for item in transcript
             if item.speaker is Speaker.INTERVIEWER and "?" in item.text
-        )[-8:]
+        )
+        clarification_requested = is_clarification_request(latest_answer)
+        pushback_detected = is_interview_pushback(latest_answer)
+        latest_signal = ""
+        if clarification_requested:
+            scope_guidance = (
+                " A work example is preferred, but a personal project is acceptable."
+                if re.search(r"\b(?:work|professional|personal|side)\b", latest_answer.lower())
+                else ""
+            )
+            latest_signal = (
+                "\n\nThe latest candidate turn is a clarification request. Classify it as "
+                "UNCLEAR with CLARIFY. Answer the request directly, then rephrase one focused "
+                f"question.{scope_guidance}"
+            )
+        elif pushback_detected:
+            latest_signal = (
+                "\n\nThe latest candidate turn is pushback that they already answered. Briefly "
+                "acknowledge it and use CHANGE_TOPIC. Do not demand the same missing detail again."
+            )
         base_input = (
             f"INTERVIEW PLAN\n{plan}\n\n"
             f"SECONDS REMAINING\n{seconds_remaining}\n\n"
@@ -190,9 +231,9 @@ class OpenAIInterviewer:
             "naturally with CLARIFY, NARROW, or CHANGE_TOPIC. Use FOLLOW_UP only for substantive "
             "or partial content. Set should_end true with END mode only when the interview should "
             "close. The runtime replaces ending text with a fixed closing statement. For every "
-            "non-ending say field, use exactly this spoken shape: one short grounded response "
+            "non-ending say field, use exactly this spoken shape: one short context-aware response "
             "sentence, followed by one focused question. Do not add an 'and what', 'and how', or "
-            "other second question clause."
+            f"other second question clause.{latest_signal}"
         )
         issue: str | None = None
         for _ in range(2):
@@ -292,6 +333,41 @@ def _safe_non_repeating_fallback(
     latest_answer: str,
     prior_questions: Sequence[str],
 ) -> NextTurn:
+    clarification_requested = is_clarification_request(latest_answer)
+    pushback_detected = is_interview_pushback(latest_answer)
+    if clarification_requested:
+        scope_question = bool(
+            re.search(r"\b(?:work|professional|personal|side)\b", latest_answer.lower())
+        )
+        say = (
+            "A work example is preferred, but a personal project is also acceptable. Which "
+            "example best shows a backend change you personally implemented?"
+            if scope_question
+            else (
+                "Let me put the question more simply. What is one backend change you personally "
+                "implemented?"
+            )
+        )
+        return NextTurn(
+            say=say,
+            rationale="Answer the candidate's clarification request directly.",
+            topic="Question clarification",
+            answer_quality=AnswerQuality.UNCLEAR,
+            response_mode=ResponseMode.CLARIFY,
+            should_end=False,
+        )
+    if pushback_detected:
+        return NextTurn(
+            say=(
+                "I hear you, so let us approach your experience differently. What production "
+                "issue did you personally diagnose?"
+            ),
+            rationale="Accommodate candidate pushback by changing angle.",
+            topic="Production debugging",
+            answer_quality=AnswerQuality.UNCLEAR,
+            response_mode=ResponseMode.CHANGE_TOPIC,
+            should_end=False,
+        )
     non_answer = is_non_answer(latest_answer)
     candidates = (
         (

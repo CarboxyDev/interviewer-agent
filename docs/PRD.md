@@ -41,12 +41,14 @@ initiate a natural interview, and save consented outputs locally.
    to answer verbally.
 10. Never ask a substantially identical question twice unless the candidate explicitly requests a
     repeat. After one recovery attempt on a vague answer, accommodate it by changing angle or topic.
-11. Treat a short request to think as a pause, not a completed answer, and keep waiting.
-12. Repeat the current question deterministically when the candidate asks, without advancing the
+11. Answer candidate questions about scope or meaning directly, then rephrase one focused question.
+12. Treat candidate pushback that they already answered as a signal to change angle or topic.
+13. Treat a short request to think as a pause, not a completed answer, and keep waiting.
+14. Repeat the current question deterministically when the candidate asks, without advancing the
     interview plan.
-13. Treat the requested duration as a soft target. Finish the current answer before closing.
-14. Always play a deterministic closing statement before stopping recording and leaving.
-15. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
+15. Treat the requested duration as a soft target. Finish the current answer before closing.
+16. Always play a deterministic closing statement before stopping recording and leaving.
+17. If the candidate leaves unexpectedly, stop cleanly and retain the consented partial artifacts.
 
 ## Outputs
 
@@ -79,6 +81,8 @@ initiate a natural interview, and save consented outputs locally.
 - Each generated follow-up responds to the assessed answer quality. It grounds substantive
   acknowledgments in a concrete detail and never praises or advances from a non-answer.
 - A near-duplicate generated question is repaired or replaced with a different angle.
+- Candidate clarification questions receive a direct answer before one rephrased question.
+- Candidate pushback does not trigger another demand for the same missing detail.
 - A generated multi-part or oversized spoken question is repaired once, then replaced by a safe
   focused fallback if still invalid.
 - Candidate departure results in `STOPPED`, not `FAILED`, with available partial artifacts.

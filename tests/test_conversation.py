@@ -3,7 +3,9 @@ from voice_interviewer.conversation import (
     classify_consent,
     contains_protected_question,
     interview_opening,
+    is_clarification_request,
     is_consent_withdrawal,
+    is_interview_pushback,
     is_non_answer,
     is_repeat_request,
     is_thinking_request,
@@ -90,3 +92,12 @@ def test_repeat_requests_are_recognized_and_question_is_replayed_naturally() -> 
     assert repeat_prompt("You mentioned caching. How did invalidation work?") == (
         "Of course. How did invalidation work?"
     )
+
+
+def test_candidate_clarification_and_pushback_are_recognized() -> None:
+    assert is_clarification_request("Do you mean for work or a personal project?")
+    assert is_clarification_request("I'm not sure I understand what you're asking.")
+    assert not is_clarification_request("I used a personal project to learn FastAPI.")
+    assert is_interview_pushback("I already told you that.")
+    assert is_interview_pushback("As I mentioned, it was Spring Boot.")
+    assert not is_interview_pushback("I already implemented the endpoint.")

@@ -193,6 +193,55 @@ def test_spoken_turn_guard_rejects_near_duplicate_question() -> None:
     )
 
 
+def test_spoken_turn_guard_requires_direct_clarification_response() -> None:
+    prior = ("You described the project. What backend responsibility did you personally own?",)
+    wrong = NextTurn(
+        say="The responsibility is still unclear. What backend responsibility did you own?",
+        rationale="Continue probing.",
+        topic="Ownership",
+        answer_quality=AnswerQuality.NON_ANSWER,
+        response_mode=ResponseMode.NARROW,
+        should_end=False,
+    )
+    clarified = NextTurn(
+        say=(
+            "A work example is preferred, but a personal project is acceptable. Which example "
+            "best shows your backend contribution?"
+        ),
+        rationale="Answer the scope question.",
+        topic="Scope clarification",
+        answer_quality=AnswerQuality.UNCLEAR,
+        response_mode=ResponseMode.CLARIFY,
+        should_end=False,
+    )
+    latest = "Do you mean for work or a personal project?"
+
+    assert spoken_turn_issue(wrong, latest_answer=latest, prior_questions=prior) is not None
+    assert spoken_turn_issue(clarified, latest_answer=latest, prior_questions=prior) is None
+
+
+def test_spoken_turn_guard_requires_angle_change_after_candidate_pushback() -> None:
+    repeated = NextTurn(
+        say="The responsibility remains unclear. What backend responsibility did you own?",
+        rationale="Probe ownership again.",
+        topic="Ownership",
+        answer_quality=AnswerQuality.UNCLEAR,
+        response_mode=ResponseMode.NARROW,
+        should_end=False,
+    )
+
+    assert (
+        spoken_turn_issue(
+            repeated,
+            latest_answer="I already told you.",
+            prior_questions=(
+                "You described the project. What backend responsibility did you personally own?",
+            ),
+        )
+        is not None
+    )
+
+
 async def test_interviewer_repairs_a_bundled_spoken_question() -> None:
     responses = [
         NextTurn(
