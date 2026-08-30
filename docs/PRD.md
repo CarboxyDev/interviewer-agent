@@ -12,7 +12,7 @@ initiate a natural interview, and save consented outputs locally.
 - One active interview per service instance
 - 5 to 45 minutes, default 30
 - Resume and job description in PDF, DOCX, or TXT
-- Dedicated or guest Google Meet participant named `AI Interviewer`
+- Dedicated Google bot account signed in manually through a persistent browser profile
 - Direct invited-account admission with one-shot `Ask to join` fallback
 - Explicit streaming cascade: STT, text LLM, TTS
 - Interruption handling that stops bot speech when the candidate speaks
@@ -61,6 +61,7 @@ initiate a natural interview, and save consented outputs locally.
 
 ## Non-goals
 
+- Anonymous Google Meet joining
 - Google account sign-in automation
 - Repeated admission requests or admission, CAPTCHA, and security-control bypasses
 - Video analysis, emotion detection, or identity inference

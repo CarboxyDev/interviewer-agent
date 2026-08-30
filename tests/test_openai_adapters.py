@@ -38,7 +38,9 @@ async def test_interview_plan_preserves_source_labels_and_avoids_stack_assumptio
 
         async def create(self, **kwargs: Any) -> SimpleNamespace:
             self.calls.append(kwargs)
-            return SimpleNamespace(output_text="[JOB] FastAPI; [RESUME] Spring Boot at Sapper AI")
+            return SimpleNamespace(
+                output_text="[JOB] FastAPI; [RESUME] Spring Boot at Example Labs"
+            )
 
     fake_responses = FakeResponses()
     interviewer = OpenAIInterviewer(
@@ -48,7 +50,7 @@ async def test_interview_plan_preserves_source_labels_and_avoids_stack_assumptio
     )
 
     plan = await interviewer.prepare(
-        resume_text="Built invoice APIs in Spring Boot at Sapper AI.",
+        resume_text="Built invoice APIs in Spring Boot at Example Labs.",
         job_description_text="The role uses FastAPI.",
         duration_minutes=15,
     )
@@ -89,7 +91,7 @@ async def test_interviewer_prompt_prioritizes_a_candidate_stack_correction() -> 
     )
 
     turn = await interviewer.next_turn(
-        plan="[JOB] FastAPI experience. [RESUME] Invoice APIs at Sapper AI.",
+        plan="[JOB] FastAPI experience. [RESUME] Invoice APIs at Example Labs.",
         transcript=[
             Utterance(
                 Speaker.CANDIDATE,

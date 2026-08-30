@@ -174,7 +174,7 @@ class ConversationRunner:
 
             self._raise_if_stopped()
             await self.repository.transition(session_id, SessionState.JOINING)
-            join_outcome = await self.meet.join(session.meeting_url, "AI Interviewer")
+            join_outcome = await self.meet.join(session.meeting_url)
             if join_outcome is JoinOutcome.ADMISSION_REQUESTED:
                 await self.repository.transition(session_id, SessionState.AWAITING_ADMISSION)
                 await self.meet.wait_for_admission(self.admission_timeout_seconds)

@@ -50,8 +50,8 @@ class FakeMeet:
         self.admission_waited = False
         self.participant_is_present = participant_present
 
-    async def join(self, meeting_url: str, display_name: str) -> JoinOutcome:
-        self.joined = meeting_url.endswith("abc-defg-hij") and display_name == "AI Interviewer"
+    async def join(self, meeting_url: str) -> JoinOutcome:
+        self.joined = meeting_url.endswith("abc-defg-hij")
         return self.join_outcome
 
     async def wait_for_admission(self, timeout_seconds: int) -> None:

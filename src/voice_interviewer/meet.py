@@ -13,7 +13,6 @@ from typing import Literal
 from playwright.async_api import (
     Browser,
     BrowserContext,
-    Locator,
     Page,
     Playwright,
     async_playwright,
@@ -23,7 +22,11 @@ from voice_interviewer.domain import FailureCode, JoinOutcome
 from voice_interviewer.errors import InterviewerError
 
 SECURITY_TEXT = re.compile(
-    r"captcha|unusual traffic|verify (that )?you are human|sign in to continue|couldn't let you in",
+    r"captcha|unusual traffic|verify (that )?you are human|couldn't let you in",
+    re.IGNORECASE,
+)
+SIGN_IN_REQUIRED_TEXT = re.compile(
+    r"sign in to continue|sign in with (?:a |your )?google account",
     re.IGNORECASE,
 )
 DENIAL_TEXT = re.compile(
@@ -33,7 +36,7 @@ DENIAL_TEXT = re.compile(
     re.IGNORECASE,
 )
 PARTICIPANT_COUNT = re.compile(r"\b(\d+)\s+(?:participant|people|person)", re.IGNORECASE)
-GUEST_NAME_INPUT = (
+ANONYMOUS_NAME_INPUT = (
     'input[placeholder*="name" i], input[aria-label*="name" i], input[name*="name" i]'
 )
 JOIN_BUTTON_TEXT = re.compile(r"join now|rejoin", re.IGNORECASE)
@@ -77,6 +80,14 @@ def compact_page_text(text: str, limit: int = 400) -> str:
 
 
 def guard_page_failure(body: str) -> tuple[FailureCode, str] | None:
+    sign_in_match = SIGN_IN_REQUIRED_TEXT.search(body)
+    if sign_in_match:
+        return (
+            FailureCode.BROWSER_PROFILE_NOT_SIGNED_IN,
+            "The dedicated interviewer browser profile is not signed in. "
+            "Run `voice-interviewer browser setup` and sign in manually.",
+        )
+
     security_match = SECURITY_TEXT.search(body)
     if security_match:
         matched_text = compact_page_text(security_match.group(0), limit=120)
@@ -91,7 +102,8 @@ def guard_page_failure(body: str) -> tuple[FailureCode, str] | None:
         matched_text = compact_page_text(denial_match.group(0), limit=120)
         return (
             FailureCode.MEETING_ACCESS_DENIED,
-            f"Google Meet denied or removed the guest. Matched guard text: {matched_text}",
+            f"Google Meet denied or removed the interviewer account. "
+            f"Matched guard text: {matched_text}",
         )
 
     return None
@@ -194,15 +206,13 @@ class PlaywrightMeetTransport:
         self._context: BrowserContext | None = None
         self._page: Page | None = None
 
-    async def join(self, meeting_url: str, display_name: str) -> JoinOutcome:
+    async def join(self, meeting_url: str) -> JoinOutcome:
         self.limiter.check_and_record(meeting_url)
         try:
             page = await self._start_browser()
             await page.goto(meeting_url, wait_until="domcontentloaded", timeout=30_000)
             await self._fail_on_guard_page()
-            name = await self._wait_for_prejoin(page)
-            if name is not None:
-                await name.fill(display_name)
+            await self._wait_for_signed_in_prejoin(page)
             await self._configure_prejoin_media()
 
             ask = page.get_by_role("button", name=ASK_TO_JOIN_TEXT)
@@ -247,17 +257,21 @@ class PlaywrightMeetTransport:
             timeout=30_000,
         )
 
-    async def _wait_for_prejoin(self, page: Page) -> Locator | None:
-        name = page.locator(GUEST_NAME_INPUT).first
+    async def _wait_for_signed_in_prejoin(self, page: Page) -> None:
+        anonymous_name = page.locator(ANONYMOUS_NAME_INPUT).first
         join = page.get_by_role("button", name=JOIN_BUTTON_TEXT)
         ask = page.get_by_role("button", name=ASK_TO_JOIN_TEXT)
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             await self._fail_on_guard_page()
-            if await name.is_visible():
-                return name
+            if await anonymous_name.is_visible():
+                raise InterviewerError(
+                    FailureCode.BROWSER_PROFILE_NOT_SIGNED_IN,
+                    "Anonymous Meet joining is not supported. Run "
+                    "`voice-interviewer browser setup` and sign in to the dedicated bot account.",
+                )
             if await join.is_visible() or await ask.is_visible():
-                return None
+                return
             await asyncio.sleep(0.25)
         body = compact_page_text(await page.locator("body").inner_text())
         raise InterviewerError(

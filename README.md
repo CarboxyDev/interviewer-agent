@@ -2,164 +2,89 @@
 
 [![CI](https://github.com/CarboxyDev/interviewer-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/CarboxyDev/interviewer-agent/actions/workflows/ci.yml)
 
-A consent-first, Python-first voice interviewer that joins Google Meet as a guest and runs an
-explicit STT to LLM to TTS cascade. It produces an audio recording, speaker-labelled transcript,
-session metadata, per-stage latency metrics, and evidence-based notes.
+An AI voice interviewer that joins an authorized Google Meet through a dedicated, manually
+signed-in bot account. It uses a cascading speech-to-text, LLM, and text-to-speech pipeline to run
+adaptive interviews and produce a recording, speaker-labelled transcript, latency metrics, and
+evidence-based notes.
 
-After consent, the agent explains the interview format and asks one focused, verbally answerable
-question at a time. The requested duration is a soft target: an answer already in progress can
-finish before the agent plays a guaranteed closing statement.
+## Reviewer guide
 
-## Safety contract
+Run the complete quality gate without Google or OpenAI credentials:
 
-- The bot joins only a meeting supplied by an authorized host.
-- It uses either an anonymous `AI Interviewer` guest or a dedicated Google profile signed in
-  manually by the operator.
-- It never automates Google credentials, MFA, CAPTCHA, cookies, or account recovery.
-- It may send one normal `Ask to join` request and waits for manual host approval.
-- It does not repeat admission requests or bypass admission, CAPTCHA, account, or security checks.
-- It persists recent join attempts and defaults to three attempts per browser profile per hour.
-- It records only after the candidate explicitly consents in the meeting.
-- A request to end the interview keeps the completed outputs. Explicit withdrawal of recording
-  consent stops recording and deletes the recorded content.
-- It does not score candidates or make hiring recommendations.
-- It asks no questions about protected personal characteristics.
+```bash
+uv sync --all-groups
+make check
+```
+
+The project uses an async modular monolith with explicit ports for Meet, audio, transcription,
+interview generation, persistence, and artifacts. This keeps the interview behavior testable
+without browser automation, audio devices, or paid API calls.
+
+Useful review documents:
+
+- [Architecture](docs/architecture.md): module boundaries, audio topology, and state machine
+- [Product requirements](docs/PRD.md): scope, behavior, non-goals, and acceptance criteria
+- [Configuration](docs/configuration.md): environment settings and operational controls
+- [SQLite decision](docs/decisions/0001-sqlite-for-local-v1.md): persistence rationale
+
+## Repository map
+
+| Area | Responsibility |
+| --- | --- |
+| `service.py` | Validates requests, persists inputs, and starts one interview session |
+| `runner.py` | Orchestrates preparation, Meet, consent, conversation, and finalization |
+| `conversation.py` | Builds transcription hints and deterministic conversation guards |
+| `meet.py` and `audio.py` | Control the signed-in Meet participant and isolated audio paths |
+| `openai_adapters.py` | Implements STT, interviewer, and TTS provider adapters |
+| `persistence.py` and `artifacts.py` | Store session state and consented outputs |
+| `api.py` and `cli.py` | Provide local control surfaces |
 
 ## Quick start
 
-Requirements: Docker Desktop, an OpenAI API key, and a fresh Google Meet owned by you. The Docker
-image installs official Google Chrome Stable for its native `amd64` or `arm64` architecture and
-controls it through Playwright over a loopback-only CDP endpoint.
+Requirements: Docker Desktop, an OpenAI API key, a dedicated Google bot account, and an authorized
+Google Meet.
 
 ```bash
 cp .env.example .env
 # Add OPENAI_API_KEY to .env
 docker compose build
 docker compose up -d
-docker compose exec interviewer voice-interviewer doctor --live
-```
-
-The recommended setup uses a dedicated spare Google account explicitly invited to the Calendar
-event. Sign in manually without automating its credentials. The browser desktop is bound to
-localhost only:
-
-```bash
 docker compose exec interviewer voice-interviewer browser setup
 ```
 
-Open `http://127.0.0.1:6080/vnc.html?autoconnect=1`, sign in manually, then stop the setup command
-with `Ctrl+C`. You may name the dedicated account `AI Interviewer`, but this is optional. Never
-copy a personal Chrome profile, inject cookies, or automate password, MFA, CAPTCHA, or Google
-security prompts.
+Open `http://127.0.0.1:6080/vnc.html?autoconnect=1`, sign in to the dedicated bot account manually,
+then stop the setup command with `Ctrl+C`. The application never automates the account password,
+MFA, CAPTCHA, recovery flow, or cookie injection.
 
-Create an interview:
-
-```bash
-curl -X POST http://localhost:8000/v1/interviews \
-  -F 'meeting_url=https://meet.google.com/abc-defg-hij' \
-  -F 'meeting_authorization_confirmed=true' \
-  -F 'duration_minutes=30' \
-  -F 'resume=@./resume.pdf' \
-  -F 'job_description=@./job-description.txt'
-```
-
-For demos, place one PDF resume and `backend-job-description.txt` in `input/`, then run:
+Check the runtime and start an interview through the CLI:
 
 ```bash
-scripts/demo-interview.sh
+docker compose exec interviewer voice-interviewer doctor --live
+
+docker compose exec interviewer voice-interviewer interview start \
+  --meeting-url 'https://meet.google.com/abc-defg-hij' \
+  --resume /input/resume.pdf \
+  --job-description /input/backend-job-description.txt \
+  --duration-minutes 15 \
+  --authorized
 ```
 
-The launcher prompts for the Meet URL and duration, defaulting to 15 minutes when the duration is
-left blank. It confirms that the meeting owner authorized the bot, then remains attached and prints
-session-state changes until the interview finishes. Audio is heard through Google Meet. Pass the URL
-and duration as optional arguments to skip the prompts.
+Place the referenced input files in the local `input/` directory before starting. The CLI also
+supports status, stop, download, metrics, and deletion commands. The same capabilities are exposed
+through the local FastAPI routes documented at `http://127.0.0.1:8000/docs`.
 
-The host should join first. Prefer a `Trusted` or `Restricted` meeting with the dedicated bot
-account explicitly invited. If Meet presents `Ask to join`, the bot sends one request and waits for
-manual approval. `Open` access remains a controlled rehearsal fallback. See
-[docs/demo-checklist.md](docs/demo-checklist.md).
+## Safety contract
+
+- The bot uses a manually signed-in dedicated account; anonymous joining is rejected.
+- It joins only authorized meetings and never automates credentials or bypasses Google security.
+- It records only after explicit consent; withdrawing consent deletes the recorded content.
+- It never produces a candidate score or hiring recommendation.
 
 ## Storage and retrieval
 
-Docker bind-mounts `./data` into the service, so data survives container rebuilds and restarts.
-Session metadata and state transitions are stored in `data/interviewer.db`. Each session has a
-directory at `data/sessions/<session-id>/` containing private input documents and generated output
-artifacts. Deleting a terminal interview through the API removes both its database record and its
-session directory.
-
-The unauthenticated API is published on `127.0.0.1` only. It exposes generated outputs, but never
-the uploaded resume or job-description files:
-
-- `GET /v1/interviews?limit=20&offset=0`: newest sessions first, with total count
-- `GET /v1/interviews/{id}`: one session
-- `GET /v1/interviews/{id}/metrics`: cascade and end-to-end latency metrics
-- `GET /v1/interviews/{id}/artifacts`: generated artifact names and sizes
-- `GET /v1/interviews/{id}/artifacts/{name}`: download one generated artifact
-- `GET /v1/interviews/{id}/artifacts.zip`: download all generated artifacts
-- `DELETE /v1/interviews/{id}`: delete terminal-session metadata, inputs, and outputs
-
-Allowed downloads are `interview.mp3`, `transcript.json`, `transcript.md`, `notes.md`,
-`session.json`, and `metrics.json`.
-
-Each completed or consented partial session includes raw timing events plus count, average, p50,
-p95, and maximum summaries. Inspect them through the API or CLI:
-
-```bash
-docker compose exec interviewer voice-interviewer interview metrics SESSION_ID
-```
-
-The main figures are:
-
-- `stt.audio_segment`: the server VAD audio window, including configured padding and end silence
-- `stt.post_speech`: detected speech end to final transcript receipt
-- `llm.request.next_turn`: final transcript processing and next-question generation
-- `tts.first_audio`: TTS request start to first PCM audio chunk
-- `pipeline.response_to_first_audio`: final transcript receipt to the first bot audio chunk
-- `pipeline.response_to_playback_end`: final transcript receipt to completed bot playback
-
-These are client-observed wall-clock measurements. They include network delay and the local audio
-path where applicable, which makes them representative of the actual demo experience.
-
-## Models and configuration
-
-All provider and pipeline choices are environment settings. The default combination prioritizes a
-low-cost, responsive demo:
-
-| Stage | Default | Main controls |
-| --- | --- | --- |
-| STT | `gpt-transcribe` | language, server VAD, context, keywords |
-| LLM | `gpt-5.6-luna` | model and reasoning effort |
-| TTS | `gpt-4o-mini-tts`, voice `cedar` | model, voice, playback timeout |
-
-Set `INTERVIEWER_REASONING_EFFORT=none` to avoid extra reasoning effort. For experiments, the
-default LLM also accepts `low`, `medium`, `high`, `xhigh`, and `max`. Higher effort can improve
-deliberation, but usually adds latency and cost. Start with `none`, then compare `low` or `medium`
-using the same scripted rehearsal.
-
-The main speech controls are:
-
-- `INTERVIEWER_STT_DELAY`: optional latency control for STT models that support it
-- `INTERVIEWER_STT_VAD_THRESHOLD`: speech detection sensitivity from greater than 0 to less than 1
-- `INTERVIEWER_STT_PREFIX_PADDING_MS`: audio retained before detected speech
-- `INTERVIEWER_STT_SILENCE_DURATION_MS`: silence required to finish a turn
-- `INTERVIEWER_STT_CONTEXT_MAX_CHARS`: bounded resume and role context sent to STT, or `0` to disable
-- `INTERVIEWER_STT_KEYWORD_LIMIT`: expected terminology sent to STT, or `0` to disable
-- `INTERVIEWER_TRANSCRIPT_CLARIFICATION_ATTEMPTS`: repeat requests after clearly unusable text
-- `INTERVIEWER_MEET_ATTEMPT_COOLDOWN_SECONDS`: same-link retry cooldown, or `0` to disable
-- `INTERVIEWER_MEET_ATTEMPT_HOURLY_LIMIT`: profile-wide hourly limit, or `0` to disable
-- `INTERVIEWER_ADMISSION_TIMEOUT_SECONDS`: maximum wait for manual host admission
-- `INTERVIEWER_RESPONSE_TIMEOUT_SECONDS`: candidate response window after bot playback
-- `INTERVIEWER_CANDIDATE_TURN_TIMEOUT_SECONDS`: maximum active answer duration after speech starts
-- `INTERVIEWER_CANDIDATE_TURN_GRACE_SECONDS`: pause allowed between answer segments
-- `INTERVIEWER_TTS_TIMEOUT_SECONDS`: independent maximum bot playback time
-
-See `.env.example` for the complete configuration. Model capabilities can change, so verify the
-selected values against the official [model catalog](https://developers.openai.com/api/docs/models)
-before replacing a default.
-
-The default uses `gpt-transcribe` because the interview loop depends on server-side speech start
-and silence detection. Streaming-only models such as `gpt-live-transcribe` need a separate local
-turn detector and are not drop-in replacements for this runtime.
+SQLite stores session state in `data/interviewer.db`; consented outputs are written under
+`data/sessions/`. Both locations are excluded from Git. Artifacts and metrics can be retrieved
+through either the CLI or the loopback-only API.
 
 ## Local development
 
@@ -171,21 +96,8 @@ uv run voice-interviewer doctor
 uv run voice-interviewer serve
 ```
 
-Run quality checks:
+Run all checks with:
 
 ```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy src
-uv run pytest
+make check
 ```
-
-API documentation is available at `http://localhost:8000/docs` while the service runs. This is
-developer documentation, not a custom product UI.
-
-## Current implementation boundary
-
-The domain, API, CLI, persistence, document extraction, safe Meet admission, provider contracts,
-and Docker audio environment are implemented independently. A real interview is deliberately
-blocked unless readiness checks pass. Google Meet can refuse an account or guest before admission,
-and its DOM can change, so the live demo checklist includes a required feasibility rehearsal.

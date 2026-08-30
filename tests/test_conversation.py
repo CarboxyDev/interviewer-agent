@@ -86,15 +86,15 @@ def test_transcription_hints_prioritize_repeated_role_terms_and_are_bounded() ->
 def test_transcription_context_includes_resume_experience_and_role_text() -> None:
     hints = build_transcription_hints(
         resume_text=(
-            "Arman Ganjoo SUMMARY Backend engineer. EXPERIENCE Sapper AI Software Engineer "
-            "building accounts payable workflows."
+            "Jordan Lee SUMMARY Backend engineer. EXPERIENCE Example Labs Software Engineer "
+            "building payment workflows."
         ),
         job_description_text="Backend role using Python APIs and distributed systems.",
         max_chars=100,
         keyword_limit=10,
     )
 
-    assert "Sapper AI" in hints.prompt
+    assert "Example Labs" in hints.prompt
     assert "Role:" in hints.prompt
 
 

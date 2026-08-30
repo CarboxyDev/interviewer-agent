@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "interviewer-voice-agent"
 version = "0.1.0"
-description = "A consent-first AI interviewer that joins Google Meet as a guest participant"
+description = "A consent-first AI interviewer using a dedicated Google Meet bot account"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 license = { text = "Proprietary" }

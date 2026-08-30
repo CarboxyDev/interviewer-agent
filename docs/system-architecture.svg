@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Consent-First AI Interviewer for Google Meet</title>
+  <desc id="desc">System architecture showing control, interview intelligence, isolated live audio, consent-gated recording, persistence, and safety boundaries.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#17324d" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#24445f"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#087f8c"/>
+    </marker>
+    <marker id="arrow-coral" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#dd4b4b"/>
+    </marker>
+    <style>
+      .title { font: 700 44px Inter, ui-sans-serif, system-ui, sans-serif; fill: #102a43; }
+      .subtitle { font: 500 18px Inter, ui-sans-serif, system-ui, sans-serif; fill: #52667a; }
+      .lane { font: 700 18px Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: 1.5px; fill: #23415b; }
+      .head { font: 700 21px Inter, ui-sans-serif, system-ui, sans-serif; fill: #102a43; }
+      .body { font: 500 16px Inter, ui-sans-serif, system-ui, sans-serif; fill: #334e68; }
+      .small { font: 600 14px Inter, ui-sans-serif, system-ui, sans-serif; fill: #486581; }
+      .tiny { font: 600 12px Inter, ui-sans-serif, system-ui, sans-serif; fill: #52667a; }
+      .state { font: 700 12px Inter, ui-sans-serif, system-ui, sans-serif; fill: #183b56; }
+      .box { fill: #ffffff; stroke: #315b7d; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .box-blue { fill: #f1f7fd; stroke: #3977a8; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .box-teal { fill: #effaf9; stroke: #087f8c; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .box-purple { fill: #f7f3ff; stroke: #7652a8; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .box-amber { fill: #fff8e8; stroke: #cc8b13; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .box-coral { fill: #fff2f0; stroke: #dd4b4b; stroke-width: 2; rx: 16; filter: url(#shadow); }
+      .flow { fill: none; stroke: #24445f; stroke-width: 3; marker-end: url(#arrow); }
+      .audio { fill: none; stroke: #087f8c; stroke-width: 4; marker-end: url(#arrow-teal); }
+      .signal { fill: none; stroke: #dd4b4b; stroke-width: 3; stroke-dasharray: 8 7; marker-end: url(#arrow-coral); }
+      .control { fill: none; stroke: #52667a; stroke-width: 2.5; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1180" fill="#f7f9fb"/>
+  <text x="70" y="72" class="title">Consent-First AI Interviewer for Google Meet</text>
+  <text x="72" y="105" class="subtitle">Implemented async modular monolith with explicit STT to LLM to TTS orchestration</text>
+
+  <rect x="45" y="135" width="1710" height="245" rx="24" fill="#edf5fb"/>
+  <text x="70" y="170" class="lane">CONTROL AND ORCHESTRATION</text>
+
+  <rect x="80" y="205" width="205" height="118" class="box"/>
+  <text x="182" y="242" class="head" text-anchor="middle">Host / Reviewer</text>
+  <text x="182" y="274" class="body" text-anchor="middle">authorized Meet URL</text>
+  <text x="182" y="299" class="body" text-anchor="middle">resume + job description</text>
+
+  <rect x="345" y="195" width="235" height="138" class="box-blue"/>
+  <text x="462" y="232" class="head" text-anchor="middle">FastAPI / Typer CLI</text>
+  <text x="370" y="266" class="body">• validate request</text>
+  <text x="370" y="292" class="body">• upload PDF, DOCX, TXT</text>
+  <text x="370" y="318" class="body">• start / stop / inspect</text>
+
+  <rect x="640" y="195" width="235" height="138" class="box-blue"/>
+  <text x="757" y="232" class="head" text-anchor="middle">InterviewService</text>
+  <text x="665" y="266" class="body">• one active session</text>
+  <text x="665" y="292" class="body">• persist safe inputs</text>
+  <text x="665" y="318" class="body">• launch async runner</text>
+
+  <rect x="935" y="185" width="535" height="163" class="box-blue"/>
+  <text x="1202" y="220" class="head" text-anchor="middle">ConversationRunner</text>
+  <g transform="translate(962,244)">
+    <rect x="0" y="0" width="66" height="32" rx="8" fill="#fff" stroke="#3977a8"/><text x="33" y="21" class="state" text-anchor="middle">CREATED</text>
+    <text x="76" y="21" class="state">›</text>
+    <rect x="88" y="0" width="78" height="32" rx="8" fill="#fff" stroke="#3977a8"/><text x="127" y="21" class="state" text-anchor="middle">PREPARING</text>
+    <text x="174" y="21" class="state">›</text>
+    <rect x="186" y="0" width="62" height="32" rx="8" fill="#fff" stroke="#3977a8"/><text x="217" y="21" class="state" text-anchor="middle">JOINING</text>
+    <text x="256" y="21" class="state">›</text>
+    <rect x="268" y="0" width="66" height="32" rx="8" fill="#fff" stroke="#3977a8"/><text x="301" y="21" class="state" text-anchor="middle">WAITING</text>
+    <text x="342" y="21" class="state">›</text>
+    <rect x="354" y="0" width="64" height="32" rx="8" fill="#fff8e8" stroke="#cc8b13"/><text x="386" y="21" class="state" text-anchor="middle">CONSENT</text>
+    <text x="426" y="21" class="state">›</text>
+    <rect x="438" y="0" width="64" height="32" rx="8" fill="#effaf9" stroke="#087f8c"/><text x="470" y="21" class="state" text-anchor="middle">ACTIVE</text>
+  </g>
+  <text x="1202" y="310" class="small" text-anchor="middle">FINALIZING → COMPLETED</text>
+  <rect x="1500" y="205" width="205" height="118" class="box-purple"/>
+  <text x="1602" y="241" class="head" text-anchor="middle">SQLite</text>
+  <text x="1525" y="273" class="body">• session metadata</text>
+  <text x="1525" y="299" class="body">• append-only events</text>
+
+  <path d="M285 264 H345" class="flow"/>
+  <path d="M580 264 H640" class="flow"/>
+  <path d="M875 264 H935" class="flow"/>
+  <path d="M1470 264 H1500" class="flow"/>
+
+  <rect x="45" y="405" width="1710" height="485" rx="24" fill="#f0faf9"/>
+  <text x="70" y="442" class="lane">LIVE INTERVIEW AND ISOLATED AUDIO</text>
+
+  <rect x="80" y="495" width="210" height="150" class="box"/>
+  <text x="185" y="533" class="head" text-anchor="middle">Candidate</text>
+  <text x="185" y="567" class="body" text-anchor="middle">speaks and hears</text>
+  <text x="185" y="593" class="body" text-anchor="middle">through Google Meet</text>
+  <text x="185" y="622" class="small" text-anchor="middle">one adult candidate</text>
+
+  <rect x="350" y="485" width="235" height="170" class="box-blue"/>
+  <text x="467" y="523" class="head" text-anchor="middle">Playwright Chromium</text>
+  <text x="467" y="553" class="body" text-anchor="middle">dedicated bot account</text>
+  <text x="375" y="587" class="small">✓ signed-in profile required</text>
+  <text x="375" y="612" class="small">✓ invited: Join now</text>
+  <text x="375" y="637" class="small">✓ Ask to join once if required</text>
+
+  <rect x="650" y="480" width="235" height="105" class="box-teal"/>
+  <text x="767" y="518" class="head" text-anchor="middle">meet_output.monitor</text>
+  <text x="767" y="550" class="body" text-anchor="middle">candidate audio only</text>
+
+  <rect x="955" y="475" width="230" height="115" class="box-teal"/>
+  <text x="1070" y="514" class="head" text-anchor="middle">OpenAI Realtime STT</text>
+  <text x="1070" y="546" class="body" text-anchor="middle">final transcript</text>
+  <text x="1070" y="570" class="body" text-anchor="middle">speech-start events</text>
+
+  <rect x="1260" y="475" width="225" height="115" class="box-blue"/>
+  <text x="1372" y="514" class="head" text-anchor="middle">Turn Orchestrator</text>
+  <text x="1372" y="546" class="body" text-anchor="middle">transcript + plan + time</text>
+  <text x="1372" y="570" class="body" text-anchor="middle">next question</text>
+
+  <path d="M290 555 H350" class="audio"/>
+  <path d="M585 532 H650" class="audio"/>
+  <path d="M885 532 H955" class="audio"/>
+  <path d="M1185 532 H1260" class="audio"/>
+  <text x="315" y="540" class="tiny">Meet audio</text>
+  <path d="M1372 475 V348" class="control"/>
+
+  <rect x="1260" y="680" width="225" height="105" class="box-teal"/>
+  <text x="1372" y="720" class="head" text-anchor="middle">OpenAI TTS</text>
+  <text x="1372" y="751" class="body" text-anchor="middle">question text → PCM</text>
+
+  <rect x="955" y="680" width="230" height="105" class="box-teal"/>
+  <text x="1070" y="720" class="head" text-anchor="middle">bot_microphone</text>
+  <text x="1070" y="751" class="body" text-anchor="middle">PulseAudio source</text>
+
+  <path d="M1372 590 V680" class="audio"/>
+  <path d="M1260 732 H1185" class="audio"/>
+  <path d="M955 732 H610 V620 H585" class="audio"/>
+  <text x="1205" y="716" class="small">PCM</text>
+  <text x="720" y="715" class="small">virtual microphone into Chromium</text>
+
+  <rect x="1240" y="610" width="260" height="48" class="box-coral"/>
+  <text x="1370" y="640" class="small" text-anchor="middle" fill="#b42318">barge-in: stop TTS playback</text>
+  <path d="M1120 590 C1150 625, 1180 634, 1240 634" class="signal"/>
+
+  <rect x="80" y="925" width="330" height="155" class="box-purple"/>
+  <text x="245" y="963" class="head" text-anchor="middle">Document extraction</text>
+  <text x="110" y="997" class="body">PDF / DOCX / TXT</text>
+  <text x="110" y="1025" class="body">bounded STT hints + keywords</text>
+  <text x="110" y="1053" class="body">resume + job description context</text>
+
+  <rect x="470" y="915" width="385" height="175" class="box-purple"/>
+  <text x="662" y="953" class="head" text-anchor="middle">OpenAI LLM Interviewer</text>
+  <text x="500" y="987" class="body">• prepare a flexible interview plan</text>
+  <text x="500" y="1015" class="body">• choose one adaptive question at a time</text>
+  <text x="500" y="1043" class="body">• generate neutral evidence-based notes</text>
+  <text x="500" y="1071" class="body">• no score or hiring verdict</text>
+
+  <rect x="915" y="925" width="210" height="155" class="box-amber"/>
+  <text x="1020" y="963" class="head" text-anchor="middle">Consent gate</text>
+  <text x="1020" y="998" class="body" text-anchor="middle">record only after</text>
+  <text x="1020" y="1023" class="body" text-anchor="middle">explicit verbal consent</text>
+  <text x="1020" y="1054" class="small" text-anchor="middle">withdrawal deletes content</text>
+
+  <rect x="1185" y="925" width="205" height="155" class="box-teal"/>
+  <text x="1287" y="963" class="head" text-anchor="middle">FFmpeg mix</text>
+  <text x="1287" y="997" class="body" text-anchor="middle">candidate stem</text>
+  <text x="1287" y="1023" class="body" text-anchor="middle">+ bot stem</text>
+  <text x="1287" y="1054" class="small" text-anchor="middle">post-consent only</text>
+
+  <rect x="1450" y="915" width="285" height="175" class="box-blue"/>
+  <text x="1592" y="953" class="head" text-anchor="middle">Filesystem artifacts</text>
+  <text x="1480" y="987" class="body">interview.mp3</text>
+  <text x="1480" y="1015" class="body">transcript.json + transcript.md</text>
+  <text x="1480" y="1043" class="body">notes.md + session.json</text>
+  <text x="1480" y="1071" class="small">metrics.json + ZIP download</text>
+
+  <path d="M410 1002 H470" class="flow"/>
+  <path d="M855 970 C900 900, 1160 860, 1305 590" class="control"/>
+  <path d="M855 1038 C960 1105, 1200 1110, 1450 1040" class="control"/>
+  <path d="M767 585 V835 H970 V925" class="audio"/>
+  <text x="785" y="820" class="small">candidate stem</text>
+  <path d="M1070 785 V860 H1070 V925" class="audio"/>
+  <text x="1085" y="850" class="small">bot stem</text>
+  <path d="M1125 1002 H1185" class="audio"/>
+  <path d="M1390 1002 H1450" class="audio"/>
+
+  <rect x="360" y="1120" width="1080" height="42" rx="12" fill="#e9f0f6" stroke="#8aa4ba"/>
+  <text x="900" y="1147" class="small" text-anchor="middle">Dedicated signed-in bot profile  |  Fail closed on Google security friction</text>
+</svg>

@@ -98,10 +98,11 @@ than pretending that an interview is still active.
 ## Meet boundary
 
 The official Google Meet Media API is receive-only, so it cannot deliver interviewer audio. Version
-1 uses a normal Chromium participant, either anonymous or backed by a dedicated profile that the
-operator signed into manually. An explicitly invited account can use `Join now` directly. If Meet
-requires admission, the adapter clicks `Ask to join` once and waits for manual host approval within
-a configured timeout. Denial, timeout, CAPTCHA, account recovery, or another security step fails
-closed without another admission request or a security bypass attempt. A persistent retry limiter
-defaults to a five-minute same-link cooldown and three attempts per browser profile per hour. Both
-limits are configurable, and `0` disables a limit for an explicitly authorized controlled demo.
+1 uses a normal Chromium participant backed by a persistent profile that the operator signs into
+manually with a dedicated Google bot account. If Meet presents an anonymous name field, the adapter
+rejects the join instead of continuing as a guest. An explicitly invited account can use `Join now`
+directly. If Meet requires admission, the adapter clicks `Ask to join` once and waits for manual
+host approval within a configured timeout. Denial, timeout, CAPTCHA, account recovery, or another
+security step fails closed without another admission request or a security bypass attempt. A
+persistent retry limiter defaults to a five-minute same-link cooldown and three attempts per
+browser profile per hour.

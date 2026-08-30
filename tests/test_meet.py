@@ -26,12 +26,24 @@ class StubLocator:
     async def is_visible(self) -> bool:
         return self.visible
 
+    @property
+    def first(self) -> "StubLocator":
+        return self
+
 
 class StubMeetPage:
-    def __init__(self, *, ask_visible: bool, join_visible: bool, leave_visible: bool) -> None:
+    def __init__(
+        self,
+        *,
+        ask_visible: bool,
+        join_visible: bool,
+        leave_visible: bool,
+        anonymous_name_visible: bool = False,
+    ) -> None:
         self.ask = StubLocator(visible=ask_visible)
         self.join = StubLocator(visible=join_visible)
         self.leave = StubLocator(visible=leave_visible)
+        self.anonymous_name = StubLocator(visible=anonymous_name_visible)
         self.goto = AsyncMock()
 
     def get_by_role(self, role: str, *, name: object) -> StubLocator:
@@ -43,6 +55,11 @@ class StubMeetPage:
         if "leave call" in pattern:
             return self.leave
         raise AssertionError(f"Unexpected role query: {role} {pattern}")
+
+    def locator(self, selector: str) -> StubLocator:
+        if "input" in selector:
+            return self.anonymous_name
+        raise AssertionError(f"Unexpected locator query: {selector}")
 
     def is_closed(self) -> bool:
         return False
@@ -60,14 +77,11 @@ async def test_join_requests_manual_admission_once(
     page = StubMeetPage(ask_visible=True, join_visible=False, leave_visible=False)
     transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
     monkeypatch.setattr(transport, "_start_browser", AsyncMock(return_value=page))
-    monkeypatch.setattr(transport, "_wait_for_prejoin", AsyncMock(return_value=None))
+    monkeypatch.setattr(transport, "_wait_for_signed_in_prejoin", AsyncMock())
     monkeypatch.setattr(transport, "_configure_prejoin_media", AsyncMock())
     monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
 
-    outcome = await transport.join(
-        "https://meet.google.com/abc-defg-hij",
-        "AI Interviewer",
-    )
+    outcome = await transport.join("https://meet.google.com/abc-defg-hij")
 
     assert outcome is JoinOutcome.ADMISSION_REQUESTED
     assert page.ask.click.await_count == 1
@@ -82,19 +96,37 @@ async def test_invited_account_joins_without_admission_wait(
     transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
     wait_until_in_call = AsyncMock()
     monkeypatch.setattr(transport, "_start_browser", AsyncMock(return_value=page))
-    monkeypatch.setattr(transport, "_wait_for_prejoin", AsyncMock(return_value=None))
+    monkeypatch.setattr(transport, "_wait_for_signed_in_prejoin", AsyncMock())
     monkeypatch.setattr(transport, "_configure_prejoin_media", AsyncMock())
     monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
     monkeypatch.setattr(transport, "_wait_until_in_call", wait_until_in_call)
 
-    outcome = await transport.join(
-        "https://meet.google.com/abc-defg-hij",
-        "AI Interviewer",
-    )
+    outcome = await transport.join("https://meet.google.com/abc-defg-hij")
 
     assert outcome is JoinOutcome.JOINED
     assert page.join.click.await_count == 1
     wait_until_in_call.assert_awaited_once()
+
+
+async def test_anonymous_prejoin_is_rejected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = StubMeetPage(
+        ask_visible=False,
+        join_visible=False,
+        leave_visible=False,
+        anonymous_name_visible=True,
+    )
+    transport = PlaywrightMeetTransport(headless=True, profile_dir=tmp_path / "profile")
+    transport._page = page  # type: ignore[assignment]
+    monkeypatch.setattr(transport, "_fail_on_guard_page", AsyncMock())
+
+    with pytest.raises(InterviewerError) as caught:
+        await transport._wait_for_signed_in_prejoin(page)  # type: ignore[arg-type]
+
+    assert caught.value.code is FailureCode.BROWSER_PROFILE_NOT_SIGNED_IN
+    assert "Anonymous Meet joining is not supported" in caught.value.detail
 
 
 async def test_manual_admission_wait_completes_when_call_controls_appear(
@@ -196,6 +228,15 @@ def test_regular_meet_page_is_not_a_guard_failure() -> None:
     assert guard_page_failure("Ready to join? Join now") is None
 
 
+def test_sign_in_page_requires_the_dedicated_bot_profile() -> None:
+    failure = guard_page_failure("Sign in to continue")
+
+    assert failure is not None
+    code, detail = failure
+    assert code is FailureCode.BROWSER_PROFILE_NOT_SIGNED_IN
+    assert "browser setup" in detail
+
+
 def test_meeting_attempt_limiter_enforces_cooldown() -> None:
     limiter = MeetingAttemptLimiter(cooldown_seconds=300, hourly_limit=3)
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=100)
@@ -213,7 +254,7 @@ def test_meeting_attempt_limiter_allows_attempt_after_cooldown() -> None:
     limiter.check_and_record("https://meet.google.com/abc-defg-hij", now=400)
 
 
-def test_meeting_attempt_limiter_can_be_disabled_for_an_authorized_demo() -> None:
+def test_meeting_attempt_limiter_can_be_explicitly_disabled() -> None:
     limiter = MeetingAttemptLimiter(cooldown_seconds=0, hourly_limit=0)
 
     for now in range(10):
