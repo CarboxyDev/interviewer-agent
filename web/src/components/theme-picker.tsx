@@ -43,6 +43,7 @@ export function ThemePicker() {
         aria-label="Appearance"
         value={theme}
         className="h-9 w-25 text-xs"
+        wrapperClassName="w-fit"
         onChange={(event) => {
           const next = event.target.value;
           if (!isTheme(next)) return;

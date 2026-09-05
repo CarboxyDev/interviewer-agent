@@ -12,7 +12,7 @@ test:
 lint:
 	uv run ruff check .
 	uv run ruff format --check .
-	uv run mypy src benchmarks prototypes/practice/server.py
+	uv run mypy src benchmarks prototypes/practice/server.py web/serve.py
 
 format:
 	uv run ruff check --fix .
@@ -25,9 +25,19 @@ doctor:
 	uv run voice-interviewer doctor
 
 
-# V2-008: isolated flow study; no runtime or provider integration.
-prototype:
-	uv run python prototypes/practice/server.py
+# V2-010: production web bundle with synthetic sessions; no provider integration.
+.PHONY: web web-check web-test
+web:
+	npm --prefix web run build
+	uv run python web/serve.py
 
-prototype-test:
-	uv run python -m pytest -c tests/prototype/pytest.ini tests/prototype
+web-check:
+	npm --prefix web run check
+
+web-test:
+	npm --prefix web run build
+	uv run python -m pytest -c tests/web/pytest.ini tests/web
+
+# Preserve existing local commands while moving the maintained UI into web/.
+prototype: web
+prototype-test: web-test

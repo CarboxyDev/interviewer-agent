@@ -35,7 +35,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check
-        run: uv run mypy src benchmarks prototypes/practice/server.py
+        run: uv run mypy src benchmarks prototypes/practice/server.py web/serve.py
 
       - name: Test
         run: uv run pytest
@@ -45,14 +45,26 @@ jobs:
           cp .env.example .env
           docker compose config --quiet
 
-  prototype:
-    name: V2-008 synthetic browser flow
+  web:
+    name: V2-010 web quality and browser flow
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Install Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install and validate web app
+        run: |
+          npm --prefix web ci
+          make web-check
 
       - name: Install uv and Python
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -67,4 +79,4 @@ jobs:
           uv run playwright install --with-deps chromium
 
       - name: Validate synthetic practice journey
-        run: make prototype-test
+        run: make web-test

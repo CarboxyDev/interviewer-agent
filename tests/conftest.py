@@ -1,3 +1,3 @@
-"""Keep the M0 browser flow study separate from runtime tests."""
+"""Keep built web-app browser checks separate from runtime tests."""
 
-collect_ignore = ["prototype"]
+collect_ignore = ["web"]
