@@ -77,6 +77,14 @@ LLM, and TTS pipeline with isolated input and output audio.
 More detail is available in the [architecture](docs/architecture.md),
 [product requirements](docs/PRD.md), and [configuration](docs/configuration.md) documents.
 
+## Version 2 direction
+
+Version 2 is planned as a browser-first candidate interview practice studio with measurable voice
+quality, evidence-linked coaching, privacy controls, and a public demo. Google Meet remains an
+advanced transport rather than the primary product experience.
+
+Follow the public [Version 2 plan and checklist](docs/v2-plan.md).
+
 ## Default models
 
 | Stage | Default |
