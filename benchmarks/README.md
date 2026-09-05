@@ -140,3 +140,48 @@ until V2-004 runs under those conditions.
 The initial offline V1 check passed on 2026-09-05: 92 tests, 88.92% coverage, Ruff, formatting,
 and strict Mypy. The fixture suite adds 11 checks. These results do not measure provider latency,
 Meet reliability, speech recognition accuracy, or cost. V2-004 remains open.
+
+## V2-004 offline preparation tools
+
+The preflight tool verifies the pinned protocol, all nine fixture assets, and 28 local runtime/build
+inputs without importing provider settings or reading `.env`. Source drift produces filenames and
+hash comparisons only, never source content or environment values.
+
+```sh
+uv run python -m benchmarks.preflight
+uv run python -m benchmarks.preflight --prepare my-baseline-campaign
+```
+
+Preparation creates a new, ignored `data/benchmarks/my-baseline-campaign/` with:
+
+- `run.json`: all 20 scheduled attempts explicitly `not_run`, warm-up unrun, cost and results unknown.
+- `preflight.json`: provenance checks and outstanding live prerequisites.
+- `build-context.tar` and `build-context.sha256`: allowlisted build inputs from the pinned baseline
+  Git commit, not the working directory. No `.env`, candidate files, profiles, or credentials.
+
+Campaign names are restricted and preparation refuses existing directories, symlinks, and runtime
+drift. It never overwrites collected evidence. Use a fresh ID for a separate preparation.
+
+Build a dedicated local image from that archive, preserving the ordinary Compose demo image:
+
+```sh
+docker build --tag interviewer-v1-benchmark:dcfd7d4 - < data/benchmarks/my-baseline-campaign/build-context.tar
+uv run python -m benchmarks.preflight --image interviewer-v1-benchmark:dcfd7d4
+```
+
+The optional image probe resolves an immutable local image ID and runs only a file-hash/Python-version
+probe with no networking, no mounts, a read-only root filesystem, and the normal entrypoint bypassed.
+It does not launch Chrome, PulseAudio, the API, or an interview. It compares installed modules,
+lockfile, package configuration, migrations, and the entrypoint with the pinned commit. Dockerfile
+and ignore-file provenance comes from the archived build context, not files inside the image.
+
+Exit code zero means the checks requested passed. **It never means the live campaign can start.**
+`collection_ready` remains false: meeting authorization, candidate audio isolation, effective
+campaign configuration, provider access, spend enforcement, and warm-up still need live verification.
+Do not copy the ordinary demo `.env` or disable its admission safeguards to make a campaign run.
+These tools neither enforce a provider budget nor establish usage attribution. Pulling build layers
+is network activity, but image inspection itself has networking disabled and makes no provider calls.
+
+Run `uv run pytest tests/test_benchmark_preflight.py --no-cov` for focused behavior checks. They use
+fictional temporary inputs and fake subprocess outputs; actual local image evidence is reported
+separately under `results/`. Runtime code and `uv.lock` remain unchanged.
