@@ -185,3 +185,44 @@ is network activity, but image inspection itself has networking disabled and mak
 Run `uv run pytest tests/test_benchmark_preflight.py --no-cov` for focused behavior checks. They use
 fictional temporary inputs and fake subprocess outputs; actual local image evidence is reported
 separately under `results/`. Runtime code and `uv.lock` remain unchanged.
+
+## V2-004 conservative latency analysis
+
+`analyze_latency` reads a prepared campaign and raw V1 `metrics.json` exports. Keep exports local in
+a directory containing only ordinal names such as `attempt-01.json`. Do not copy `session.json`,
+transcripts, audio, or profiles into it. Never retain metrics for the withdrawal probe.
+
+```sh
+uv run python -m benchmarks.analyze_latency data/benchmarks/my-baseline-campaign/run.json \
+  --metrics-dir data/benchmarks/my-baseline-campaign/metrics
+```
+
+Create the metrics directory even for an unrun campaign. Output is JSON on stdout; the command never
+modifies inputs or the campaign record. A completely unrun campaign reports 20 `not_run` attempts,
+zero samples, and null latency/cost. It does not produce a successful or zero-latency baseline.
+
+Analysis rules:
+
+- Require all 20 ordinal attempts in the fixed probe order and the same dataset/configuration.
+  Reject unknown/unrun attempt artifacts, mixed model maps, incompatible metric schemas/units,
+  duplicate metric sequences/artifacts, unknown stages/statuses, and invalid numeric durations.
+- Pool raw event values across eligible completed attempts. Keep stage, phase, and LLM operation
+  separate. Ignore V1's already-grouped summaries; use nearest-rank p50 and p95 from raw samples.
+- Keep failures and incomplete attempts in accounting while excluding their events from the
+  completed-response latency distribution. This output is not the campaign reliability grade.
+- Keep failed and interrupted playback counts visible. If any playback in an attempt/phase fails
+  or is interrupted, or audio-chunk/playback counts disagree, exclude its onset samples for the
+  entire phase. V1 cannot reliably pair them by turn ID. Excess response-onset events are excluded
+  too. This intentionally loses some potentially valid samples instead of labelling partial output
+  as successful response latency.
+- Report missing metric files separately from missing stage samples. V1 does not record the total
+  expected number of each stage/phase event, so `missing_count` stays null with a reason. In
+  particular, silence failures may have no artifact, and withdrawal deliberately has none.
+- Emit only allowlisted aggregates. Campaign names, free-text reviews, raw item IDs, paths, source
+  errors, and unknown input fields are never copied into the output.
+- Do not infer provider cost, candidate-audible onset, interruption-stop timing, source provenance,
+  or campaign/release acceptance. Those require the protocol's separate evidence.
+
+Focused validation: `uv run pytest tests/test_benchmark_latency.py --no-cov`. Inputs are fictional;
+one compatibility test uses the actual V1 `LatencyTracker` with a fake clock. The tests establish
+aggregation behavior, not measured provider latency or cost.

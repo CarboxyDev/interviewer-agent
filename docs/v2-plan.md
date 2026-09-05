@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-004, offline baseline preparation (live collection blocked)\
+Current task: V2-004, live baseline collection (blocked on external setup)\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -453,14 +453,16 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | Keep the live interview distraction-free and move technical detail to review | Accepted | Realistic practice requires attention on the conversation rather than a dashboard |
 | 2026-09-05 | Support focused practice and mock interview modes | Accepted | Candidates need both realistic rehearsal and a short improvement loop |
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
+| 2026-09-05 | V2-004: conservative raw-event latency analyzer, separated by stage/phase/operation | Accepted | Excludes ambiguous failed/interrupted playback samples and keeps unknown latency/cost missing; no V1 instrumentation changes |
 | 2026-09-05 | V2-004: offline preflight, pinned build context, and unscored campaign skeleton | Accepted | Makes provenance and missing live prerequisites repeatable without provider calls, altering V1, or bypassing admission safeguards |
 | 2026-09-05 | V2-008: dependency-free static prototype with synthetic inputs and simulated device/provider states | Accepted | Validates flow before M2; no candidate capture, uploads, backend integration, persistence, or stack change |
 | 2026-09-05 | V2-007: one Fly.io Machine/worker and private volume, browser-only public composition, snapshots disabled before candidate data | Accepted | See [hosting decision](decisions/V2-007-public-hosting.md); bounded demo concurrency, explicit 24-hour retention, owner isolation and spend admission; no deployment performed |
 
 ## Current status
 
-- Current repository checks pass with 128 tests and 88.92% measured coverage; the unchanged V1
-  baseline had 92 tests; V2-002 added 11 fixture checks and V2-004 added 25 preflight checks.
+- Current repository checks pass with 161 tests and 88.92% measured coverage; the unchanged V1
+  baseline had 92 tests; V2-002 added 11 fixture checks and V2-004 added 25 preflight plus
+  33 latency-analysis checks.
   V2-008 has a separate 27-test Chromium suite.
 - V1 has successful live Google Meet rehearsal evidence and retained local artifacts.
 - Historical metrics show a material response-latency gap, but M0 must establish a fixed V2 baseline.
@@ -469,7 +471,7 @@ The release suite must include typical, edge, and adversarial cases:
 - V2-003 completed: `benchmarks/README.md` defines the environment, metric boundaries, fixed probe
   matrix, failure accounting, and versioned `benchmarks/run-template.json`.
 - V2-004 offline preparation now verifies all 28 local runtime/build inputs and nine fixture assets.
-  A dedicated image built from the pinned Git archive passes the installed-source/lockfile probe;
+  `83eeb32` adds the preparation tool. A dedicated image built from the pinned Git archive passes the installed-source/lockfile probe;
   ordinary demo settings and its stale image were preserved. Preparation creates 20 unrun attempt
   records without overwriting evidence. See `benchmarks/results/2026-09-05-v1-preparation.md`.
   Live collection still needs authorized Meet/audio setup, effective campaign settings, provider
@@ -483,9 +485,14 @@ The release suite must include typical, edge, and adversarial cases:
   controls, evidence, retry, export/delete, and six recovery scenarios. All 27 Chromium checks pass;
   `make check` passes with 103 runtime/fixture tests and 88.92% coverage. See
   `docs/validation/V2-008-practice-prototype.md`. No real capture or candidate usability study.
-- Current work: V2-004 conservative raw-latency analysis for the future baseline. Live collection
-  remains blocked by the authorized meeting, isolated audio route, and enforced attributable budget.
-  V2-004 must still complete before M0 closes and the M1 engine refactor starts.
+- V2-004 raw-latency analysis is implemented with 33 focused checks and a real V1 tracker-format
+  compatibility check. It separates phases/operations, excludes ambiguous partial playback, rejects
+  invalid/mixed/duplicate artifacts, and keeps missing measurements null. The unscored preparation
+  reports 20 unrun attempts and no latency/cost. See
+  `benchmarks/results/2026-09-05-v1-analysis-validation.md`.
+- Current task remains V2-004 live collection, blocked by the authorized meeting, isolated audio
+  route, effective campaign configuration, provider access, and enforced attributable budget.
+  All other M0 tasks are complete. V2-004 must pass before M0 closes and M1 engine work begins.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
   source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.
@@ -515,7 +522,6 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | Approved V2-001 and completed V2-002/V2-003; recorded baseline behavior gaps and live measurement limits |
 | 2026-09-05 | Recorded V2-004 preflight blockers and completed the V2-005 module coupling audit |
 | 2026-09-05 | Accepted V2-006 web stack and V2-007 hosting/data boundaries; queued V2-008 while retaining the V2-004 blocker |
-
 | 2026-09-05 | Completed V2-008 interactive flow validation; continued V2-004 offline preparation without changing V1 runtime |
-
 | 2026-09-05 | V2-004 preparation: added provenance tooling and 25 checks; built and verified dedicated pinned image; live campaign remains blocked |
+| 2026-09-05 | V2-004 analysis: added conservative phase-separated raw-event aggregation and 33 tests; unrun campaign remains explicitly unmeasured |
