@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = {
+    "/scenarios.js": (ROOT / "prototypes/practice/scenarios.js", "text/javascript; charset=utf-8"),
     "/": (ROOT / "prototypes/practice/index.html", "text/html; charset=utf-8"),
     "/index.html": (ROOT / "prototypes/practice/index.html", "text/html; charset=utf-8"),
     "/practice.css": (ROOT / "prototypes/practice/practice.css", "text/css; charset=utf-8"),

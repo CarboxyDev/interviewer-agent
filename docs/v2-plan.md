@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-009, role-neutral interviewer and role-driven sample practice\
+Current task: V2-004, live baseline collection (blocked on external setup)\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -294,7 +294,7 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
 - [x] V2-006 Decide the web stack and record the choice in the Decision log.
 - [x] V2-007 Decide the first public hosting shape and record data-flow and cost boundaries.
 - [x] V2-008 Validate the practice modes and screen flow with a low-fidelity interactive prototype.
-- [ ] V2-009 Remove engineering-only defaults and validate role/goal-driven sample practice.
+- [x] V2-009 Remove engineering-only defaults and validate role/goal-driven sample practice.
   Acceptance: role-neutral planning, transcription and recovery; at least four role examples with
   distinct goal prompts, evidence, retries and exports; role preserved for next practice; no
   mismatched audio or claims of live adaptation; focused runtime and browser checks pass.
@@ -466,19 +466,20 @@ The release suite must include typical, edge, and adversarial cases:
 
 ## Current status
 
-- V2-009 is current at user priority: remove backend-engineering assumptions in runtime prompts
-  and make the sample UI follow the chosen role and goal. Runtime changes pass `make check`
-  with 168 tests, including six non-engineering provider-boundary/recovery cases and a transcription
-  vocabulary check. UI work remains underway; live provider quality remains unverified.
+- V2-009 is complete: role-neutral runtime defaults, four role examples, and two supported goals
+  per role. Preview, questions, follow-ups, coaching, evidence, retry and downloads follow the
+  selected role and goal. All 41 Chromium checks and 168 runtime checks pass. See
+  `docs/validation/V2-009-role-aware-practice.md`; live model quality and browser integration remain
+  unverified. Runtime commit: `9b03486`.
 
 - User-prioritized V2-008 refinement is complete: plain candidate language, compact application
   layouts, recovery controls only in QA mode, honest sample-session notices, and readable review
   downloads. All 32 Chromium checks pass, including wording and responsive-width regression checks.
 
-- Current repository checks pass with 161 tests and 88.92% measured coverage; the unchanged V1
+- Current repository checks pass with 168 tests and 88.92% measured coverage; the pinned V1
   baseline had 92 tests; V2-002 added 11 fixture checks and V2-004 added 25 preflight plus
-  33 latency-analysis checks.
-  V2-008 now has a separate 32-test Chromium suite.
+  33 latency-analysis checks. V2-009 adds seven runtime checks.
+  Browser checks run separately from runtime validation.
 - V1 has successful live Google Meet rehearsal evidence and retained local artifacts.
 - Historical metrics show a material response-latency gap, but M0 must establish a fixed V2 baseline.
 - V2-001 is approved by the instruction to start implementing this plan autonomously.
@@ -487,7 +488,9 @@ The release suite must include typical, edge, and adversarial cases:
   matrix, failure accounting, and versioned `benchmarks/run-template.json`.
 - V2-004 offline preparation now verifies all 28 local runtime/build inputs and nine fixture assets.
   `83eeb32` adds the preparation tool. A dedicated image built from the pinned Git archive passes the installed-source/lockfile probe;
-  ordinary demo settings and its stale image were preserved. Preparation creates 20 unrun attempt
+  ordinary demo settings and its stale image were preserved. V2-009 now intentionally changes
+  two runtime modules; current-checkout provenance therefore fails closed. Use the retained pinned
+  archive/image or a separate checkout of the pinned V1 revision for baseline preparation. Preparation creates 20 unrun attempt
   records without overwriting evidence. See `benchmarks/results/2026-09-05-v1-preparation.md`.
   Live collection still needs authorized Meet/audio setup, effective campaign settings, provider
   access, an enforced attributable budget, and the warm-up. No live attempt or provider call was made.
@@ -507,7 +510,7 @@ The release suite must include typical, edge, and adversarial cases:
   `benchmarks/results/2026-09-05-v1-analysis-validation.md`.
 - V2-004 live collection remains blocked by the authorized meeting, isolated audio
   route, effective campaign configuration, provider access, and enforced attributable budget.
-  V2-009 is underway at user priority. V2-004 must pass before M0 closes and M1 engine work begins.
+  All other M0 tasks are complete. V2-004 must pass before M0 closes and M1 engine work begins.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
   source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.
@@ -526,7 +529,8 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-006 | [Web-stack decision](decisions/V2-006-web-stack.md); evaluated existing FastAPI ownership, browser audio, generated contracts, UI state, and testing against official React/Vite/OpenAPI and browser documentation | Scaffold, contract generation, and browser verification remain M2 work |
 | 2026-09-05 | V2-007 | [Hosting decision](decisions/V2-007-public-hosting.md); documented single-machine topology, data flow, ownership, retention, snapshots, spend admission, failure recovery and alternatives using current platform docs; local links and source inventory checked; `make check` passes with 103 tests and 88.92% coverage | No cloud resources provisioned; cost and production controls require M5 validation |
 | 2026-09-05 | V2-008 | `e4bc674`; `prototypes/practice/`; 27 local Chromium checks; in-app visual walkthrough of start, setup, readiness, and live views; `make check`: 103 tests, 88.92% coverage, Ruff, format, strict Mypy; separate browser CI job added | Synthetic flow only; no live capture, provider behavior, durable storage, candidate study, or hosted CI result |
-| 2026-09-05 | V2-009 runtime | Role-neutral planning, transcription and deterministic recovery; `make check`: 168 tests, Ruff, format, strict Mypy, 88.92% coverage | Fake provider tests verify context wiring and fallback behavior, not live model quality; sample UI work remains; pinned V1 image/archive retained unchanged |
+| 2026-09-05 | V2-009 sample UI | Four roles with two goal variants; 41 Chromium checks pass, including complete journeys, exports, current-question repeat and consent/audio isolation; `make check`: 168 tests; in-app finance setup/review inspected; see `docs/validation/V2-009-role-aware-practice.md` | Authored sample content, no live browser/provider integration; only engineering has matching review audio; M0 remains open |
+| 2026-09-05 | V2-009 runtime | `9b03486`; role-neutral planning, transcription and deterministic recovery; `make check`: 168 tests, Ruff, format, strict Mypy, 88.92% coverage | Fake provider tests verify context wiring and fallback behavior, not live model quality; sample UI subsequently validated separately; pinned V1 image/archive retained unchanged |
 | 2026-09-05 | V2-008 UI refinement | Removed development copy, slogans, fake countdown and default QA controls; compact layout, separate sound/transcript gates and readable text review; 32 Chromium tests and `make check` with 161 tests pass; in-app visual inspection of start, setup, readiness and live views | Sample content only; no live capture, provider integration, durable storage or new deployment |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 

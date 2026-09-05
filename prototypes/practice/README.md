@@ -1,6 +1,6 @@
 # Practice flow study
 
-V2-008. An interactive candidate-facing study of the V2 practice journey. This is an isolated
+V2-008 and V2-009. An interactive candidate-facing study of the V2 practice journey. This is an isolated
 M0 artifact, not the M2 React application or a working interview service.
 
 ## Run
@@ -25,7 +25,9 @@ Use `uv run python prototypes/practice/server.py --port 8766` if the default por
 ## What to try
 
 1. Start sample practice without an account or upload. Change the goal, mode, or duration and inspect
-   the focus preview. The normal path offers the supported sample role.
+   the focus preview. Choose backend engineering, product management, customer success, or finance.
+   Each role has a professional focus and a Clarity goal; questions, follow-ups, coaching and
+   exports follow those choices.
 2. At the ready check, play the audio and confirm sound. Sound confirmation and permission to
    include a written transcript are separate gates; review audio is optional. The privacy text
    describes actual tab-only behavior. Real microphone permission remains M2 work.
@@ -66,10 +68,14 @@ candidate usability research.
   confirmation instead of claiming to detect a microphone. Duration is a session setting, not a
   fake running countdown.
 - Audio playback uses the public fictional V2-002 answer, not a captured interview. Evidence timing
-  is approximate. The sound check uses this same clip, not the final interviewer voice.
+  is approximate. Only the engineering example has matching audio; other roles disable review
+  audio and show transcript evidence without invented timestamps. The sound check uses this same clip, not the final interviewer voice.
 - Original feedback and retry text are authored examples, not model evaluations. The retry has no
-  recorded audio. Goals share one fictional scenario, not an adaptive question generator.
-- Reloading clears all work. Starting the next practice also resets the demo; export first if needed.
+  recorded audio. Each role has one fictional answer and retry, with two goal-specific question and coaching
+  variants. These are authored scenarios, not an adaptive question generator. The UI does not
+  send these choices to the interview service.
+- Reloading clears all work. Starting the next practice clears answers and consent while preserving the selected role;
+  export first if needed.
 - Production durable save, resumable reports, real deletion acknowledgement, browser navigation
   recovery, Safari/Firefox microphone behavior, and accessibility assistive-technology testing
   remain later milestones. No hosting resources were created.

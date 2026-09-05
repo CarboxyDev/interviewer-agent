@@ -4,7 +4,9 @@ Date: 2026-09-05. Artifact: [interactive prototype](../../prototypes/practice/RE
 Method: contract walkthrough plus automated local Chromium interactions using only fictional data.
 No candidate study, live interview, provider result, microphone capture, or deployment is claimed.
 
-Validation result: 32 Chromium browser checks pass on macOS; `make check` passes with 161
+Later role/goal work is recorded in [V2-009 validation](V2-009-role-aware-practice.md).
+
+Validation result at V2-008 completion: 32 Chromium browser checks pass on macOS; `make check` passes with 161
 runtime/fixture tests, 88.92% runtime coverage, Ruff, formatting, and strict Mypy. In-app visual
 walkthrough inspected start, configuration, readiness, and the live workspace. A separate browser
 CI job is configured; no remote CI result is claimed.

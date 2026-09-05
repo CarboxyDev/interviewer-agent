@@ -153,7 +153,7 @@ def test_retry_comparison_export_and_next_focus(page: Page) -> None:
     assert "What to improve" in report
     assert "What worked well" in report
     assert "V2-008" not in report
-    click(page, "Practice explaining tradeoffs")
+    click(page, "Continue focused practice")
     expect(page.get_by_label("Practice goal")).to_have_value("Clarity")
     expect(page.get_by_role("radio", name="Focused practice")).to_be_checked()
 
@@ -364,3 +364,133 @@ def test_candidate_screens_fit_responsive_width(page: Page, width: int) -> None:
     expect(page.get_by_role("heading", name="Your turn", exact=True)).to_be_visible()
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     expect(page.locator('[aria-current="step"]')).to_have_text("Practice")
+
+
+# V2-009: validate complete candidate journeys against independent role expectations.
+@pytest.mark.parametrize("clarity", [False, True])
+@pytest.mark.parametrize(
+    ("role", "name", "focus", "question", "clarity_question", "evidence", "followup"),
+    [
+        (
+            "backend",
+            "Backend engineer",
+            "Technical depth",
+            "safe to retry",
+            "colleague outside engineering",
+            "one hundred requests",
+            "expire the saved results",
+        ),
+        (
+            "product",
+            "Product manager",
+            "Prioritization",
+            "onboarding improvement",
+            "colleague unfamiliar",
+            "14 of 20 customers",
+            "reconsider the checklist",
+        ),
+        (
+            "success",
+            "Customer success manager",
+            "Customer communication",
+            "onboarding had stalled",
+            "account lead",
+            "within three weeks",
+            "progress independently",
+        ),
+        (
+            "finance",
+            "Finance analyst",
+            "Financial analysis",
+            "unexpected spending variance",
+            "without finance experience",
+            "2 percent above budget",
+            "revised quarter forecast",
+        ),
+    ],
+)
+def test_role_and_goal_follow_the_entire_journey(
+    page: Page,
+    clarity: bool,
+    role: str,
+    name: str,
+    focus: str,
+    question: str,
+    clarity_question: str,
+    evidence: str,
+    followup: str,
+) -> None:
+    click(page, "Set up practice")
+    page.get_by_label("Practice role", exact=True).select_option(role)
+    expect(page.get_by_label("Practice goal")).to_have_value(focus)
+    if clarity:
+        page.get_by_label("Practice goal").select_option("Clarity")
+    expect(page.get_by_label("Focus preview")).to_contain_text(name)
+    click(page, "Continue")
+    if role != "backend":
+        expect(page.get_by_role("checkbox", name="Include audio")).to_be_disabled()
+    click(page, "Sound is working")
+    page.get_by_role("checkbox", name="Allow a transcript").check()
+    click(page, "Start practice")
+    expect(page.get_by_role("heading", name="Your turn", exact=True)).to_be_visible()
+    expect(page.locator(".question")).to_contain_text(clarity_question if clarity else question)
+    first_question = page.locator(".question").inner_text()
+    answer(page)
+    if not clarity:
+        expect(page.locator(".question")).to_contain_text(followup)
+    assert page.locator(".question").inner_text() != first_question
+    current_question = page.locator(".question").inner_text()
+    click(page, "Repeat question")
+    page.locator("#captions > summary").click()
+    expect(page.locator("#captions")).to_contain_text(current_question)
+    expect(page.get_by_role("heading", name="Your turn", exact=True)).to_be_visible()
+    click(page, "Review answer")
+    click(page, "View feedback")
+    expect(page.locator("main")).to_contain_text(name)
+    if clarity:
+        expect(
+            page.get_by_role("heading", name="Make the purpose clear before the detail.")
+        ).to_be_visible()
+    click(page, "See result in transcript")
+    expect(page.locator("#evidence blockquote")).to_contain_text(evidence)
+    if role != "backend":
+        expect(page.locator("main audio")).to_have_count(0)
+        expect(page.locator("main")).not_to_contain_text("inventory")
+    click(page, "Retry this answer")
+    expect(page.get_by_role("heading", name="Your turn", exact=True)).to_be_visible()
+    expect(page.locator(".question")).to_have_text(first_question)
+    click(page, "Continue with revised answer")
+    expect(page.get_by_role("heading", name="Your turn", exact=True)).to_be_visible()
+    click(page, "Finish retry")
+    expect(page.get_by_role("heading", name="Compare your answers")).to_be_visible()
+    expect(page.locator("main")).to_contain_text(name)
+    expect(page.locator("main blockquote").first).to_contain_text(evidence)
+    with page.expect_download() as download_info:
+        click(page, "Download review")
+    report = Path(download_info.value.path()).read_text()
+    assert f"Role: {name}" in report
+    assert f"Focus: {'Clarity' if clarity else focus}" in report
+    assert evidence in report
+    assert "Revised answer\nMy goal was" in report
+    if role != "backend":
+        assert "inventory" not in report
+        assert "backend" not in report.lower()
+    click(page, "Continue focused practice")
+    expect(page.get_by_label("Practice role", exact=True)).to_have_value(role)
+    expect(page.get_by_label("Practice goal")).to_have_value("Clarity")
+    click(page, "Continue")
+    expect(page.get_by_role("checkbox", name="Allow a transcript")).not_to_be_checked()
+    expect(page.get_by_role("button", name="Start practice", exact=True)).to_be_disabled()
+
+
+def test_switching_role_clears_prior_readiness_and_audio_choices(page: Page) -> None:
+    ready(page, retain=True)
+    click(page, "Sound is working")
+    page.get_by_role("checkbox", name="Allow a transcript").check()
+    click(page, "Back to setup")
+    page.get_by_label("Practice role", exact=True).select_option("finance")
+    click(page, "Continue")
+    expect(page.get_by_role("checkbox", name="Include audio")).not_to_be_checked()
+    expect(page.get_by_role("checkbox", name="Include audio")).to_be_disabled()
+    expect(page.get_by_role("checkbox", name="Allow a transcript")).not_to_be_checked()
+    expect(page.get_by_role("button", name="Start practice", exact=True)).to_be_disabled()
