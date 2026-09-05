@@ -455,15 +455,20 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
 | 2026-09-05 | V2-004: conservative raw-event latency analyzer, separated by stage/phase/operation | Accepted | Excludes ambiguous failed/interrupted playback samples and keeps unknown latency/cost missing; no V1 instrumentation changes |
 | 2026-09-05 | V2-004: offline preflight, pinned build context, and unscored campaign skeleton | Accepted | Makes provenance and missing live prerequisites repeatable without provider calls, altering V1, or bypassing admission safeguards |
+| 2026-09-05 | V2-008: candidate-facing sample UI, with QA controls outside the normal journey | Accepted | User requested business-friendly UI without developer terms; preserve sample honesty and consent controls while moving engineering explanations to documentation |
 | 2026-09-05 | V2-008: dependency-free static prototype with synthetic inputs and simulated device/provider states | Accepted | Validates flow before M2; no candidate capture, uploads, backend integration, persistence, or stack change |
 | 2026-09-05 | V2-007: one Fly.io Machine/worker and private volume, browser-only public composition, snapshots disabled before candidate data | Accepted | See [hosting decision](decisions/V2-007-public-hosting.md); bounded demo concurrency, explicit 24-hour retention, owner isolation and spend admission; no deployment performed |
 
 ## Current status
 
+- User-prioritized V2-008 refinement is complete: plain candidate language, compact application
+  layouts, recovery controls only in QA mode, honest sample-session notices, and readable review
+  downloads. All 32 Chromium checks pass, including wording and responsive-width regression checks.
+
 - Current repository checks pass with 161 tests and 88.92% measured coverage; the unchanged V1
   baseline had 92 tests; V2-002 added 11 fixture checks and V2-004 added 25 preflight plus
   33 latency-analysis checks.
-  V2-008 has a separate 27-test Chromium suite.
+  V2-008 now has a separate 32-test Chromium suite.
 - V1 has successful live Google Meet rehearsal evidence and retained local artifacts.
 - Historical metrics show a material response-latency gap, but M0 must establish a fixed V2 baseline.
 - V2-001 is approved by the instruction to start implementing this plan autonomously.
@@ -511,6 +516,7 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-006 | [Web-stack decision](decisions/V2-006-web-stack.md); evaluated existing FastAPI ownership, browser audio, generated contracts, UI state, and testing against official React/Vite/OpenAPI and browser documentation | Scaffold, contract generation, and browser verification remain M2 work |
 | 2026-09-05 | V2-007 | [Hosting decision](decisions/V2-007-public-hosting.md); documented single-machine topology, data flow, ownership, retention, snapshots, spend admission, failure recovery and alternatives using current platform docs; local links and source inventory checked; `make check` passes with 103 tests and 88.92% coverage | No cloud resources provisioned; cost and production controls require M5 validation |
 | 2026-09-05 | V2-008 | `e4bc674`; `prototypes/practice/`; 27 local Chromium checks; in-app visual walkthrough of start, setup, readiness, and live views; `make check`: 103 tests, 88.92% coverage, Ruff, format, strict Mypy; separate browser CI job added | Synthetic flow only; no live capture, provider behavior, durable storage, candidate study, or hosted CI result |
+| 2026-09-05 | V2-008 UI refinement | Removed development copy, slogans, fake countdown and default QA controls; compact layout, separate sound/transcript gates and readable text review; 32 Chromium tests and `make check` with 161 tests pass; in-app visual inspection of start, setup, readiness and live views | Sample content only; no live capture, provider integration, durable storage or new deployment |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 
 ## Plan change log
@@ -525,3 +531,4 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | Completed V2-008 interactive flow validation; continued V2-004 offline preparation without changing V1 runtime |
 | 2026-09-05 | V2-004 preparation: added provenance tooling and 25 checks; built and verified dedicated pinned image; live campaign remains blocked |
 | 2026-09-05 | V2-004 analysis: added conservative phase-separated raw-event aggregation and 33 tests; unrun campaign remains explicitly unmeasured |
+| 2026-09-05 | Refined V2-008 for candidate-facing use: plain copy, compact layout, QA-only recovery controls and readable downloads; 32 browser checks pass |

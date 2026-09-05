@@ -4,7 +4,7 @@ Date: 2026-09-05. Artifact: [interactive prototype](../../prototypes/practice/RE
 Method: contract walkthrough plus automated local Chromium interactions using only fictional data.
 No candidate study, live interview, provider result, microphone capture, or deployment is claimed.
 
-Validation result: 27 Chromium browser checks pass on macOS; `make check` passes with 103
+Validation result: 32 Chromium browser checks pass on macOS; `make check` passes with 161
 runtime/fixture tests, 88.92% runtime coverage, Ruff, formatting, and strict Mypy. In-app visual
 walkthrough inspected start, configuration, readiness, and the live workspace. A separate browser
 CI job is configured; no remote CI result is claimed.
@@ -15,18 +15,32 @@ CI job is configured; no remote CI result is claimed.
 | --- | --- |
 | Default sample path, no account or upload | Start → configuration → ready check; fictional default role and optional sample resume |
 | Goals before documents, useful defaults | Goal first; focused mode and five minutes; preview updates for mode, goal, and duration |
-| Personal context choices | Sample pasted text and role document paths are visible; real input is explicitly unavailable |
-| Required transcription, optional audio | Independent consent and device gates; audio retention is unchecked by default |
-| Data handling before start | Planned 24-hour expiry and immediate deletion copy; separate explanation of the tab-only simulation |
-| Calm live workspace | Dominant conversation state, secondary static timer, essential controls, collapsed captions |
+| Personal context choices | Sample role in the normal journey; synthetic personal-context paths only in QA mode |
+| Required transcription, optional audio | Separate transcript permission and sound-confirmation gates; review audio unchecked by default |
+| Data handling before start | Current page-only retention and deletion copy; microphone-off disclosure, without future capability claims |
+| Calm live workspace | Dominant conversation state, selected session duration, essential controls, collapsed captions |
 | Both practice modes | Focused segment supports retry; mock practice provides no feedback between sample answers |
 | Voice state and controls | Speaking, listening, thinking, pause, reconnecting recovery, and finishing transitions; mute/repeat/help |
 | End versus withdraw | Separate dialogs explain preserving consented work versus clearing the session |
 | Evidence before suggestions | Both displayed observations open exact fictional transcript quotes; optional original audio |
 | Retry and comparison | One answer retry; side-by-side authored texts and quoted changed opening; no hiring score |
 | One next practice action | Clarity practice focused on explaining the expiry tradeoff; export and deletion remain accessible |
-| Failure recovery | Permission, device, silence, network, provider, and report scenarios each have recovery and exit controls |
+| Failure recovery | Permission, device, silence, network, provider, and report scenarios in QA mode each have recovery and exit controls |
 | Keyboard and responsive foundation | Focus on screen entry/evidence, retained control focus, native dialogs, reduced motion, mobile width |
+
+## Candidate-facing refinement
+
+The user requested a business-friendly application without developer terminology or a demo-heavy
+presentation. The normal journey now has compact headings, setup/practice/review navigation,
+functional mode choices, shorter readiness copy, and a visible question during the sample interview.
+Version labels, slogans, milestone references, repeated implementation disclaimers, the false
+countdown, and recovery-test controls were removed from the normal view. Downloads are readable
+text reviews rather than raw JSON. Sample-session and microphone-off notices preserve honest scope.
+
+Five additional browser checks cover the entire normal journey for engineering-copy leakage,
+unimplemented upload controls, and responsive widths of 390, 820, and 1440 pixels. Existing consent,
+recovery, evidence, deletion, retry, and keyboard checks remain. Engineering scenarios require
+`?qa=1`; this is a UI testing switch and grants no permissions or runtime capabilities.
 
 ## Issues found and resolved
 

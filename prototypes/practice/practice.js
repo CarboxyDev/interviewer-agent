@@ -1,6 +1,15 @@
 /* V2-008: synthetic flow study. No capture, network calls, uploads, or persistence. */
 const main = document.querySelector("main");
 const dialog = document.querySelector("dialog");
+const qaMode = new URLSearchParams(location.search).get("qa") === "1";
+if (qaMode) {
+  document
+    .querySelector("footer")
+    .insertAdjacentHTML(
+      "beforeend",
+      `<details id="lab"><summary>Recovery checks</summary><div id="scenarios"></div></details>`,
+    );
+}
 const question = "How did you make the inventory update safe to retry?";
 const original =
   "I built the inventory update endpoint. I used a client supplied idempotency key and a unique database constraint. I stored the result in the same transaction as the update, so a retry returned the saved result. In a sample test with one hundred requests, including twenty duplicates, each unique update applied once. The tradeoff was storing request results and deciding when to expire them.";
@@ -44,10 +53,11 @@ function go(screen) {
   clearTimeout(pending);
   state.screen = screen;
   render();
-  main.focus();
+  main.focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function preview() {
-  return `<aside class="preview" aria-label="Focus preview"><span class="eyebrow">Your focus</span><h2>${state.goal}</h2><dl><dt>Format</dt><dd>${modeName()} · ${state.duration} minutes</dd><dt>Role</dt><dd>Backend engineer · fictional inventory service</dd><dt>Likely topics</dt><dd>Ownership, reliable updates, and explaining a technical tradeoff.</dd><dt>Feedback timing</dt><dd>${state.mode === "focused" ? "Reflect after the practice segment, then retry one answer." : "Complete the interview first. No coaching between questions."}</dd></dl></aside>`;
+  return `<aside class="preview" aria-label="Focus preview"><span class="eyebrow">Session details</span><h2>Backend engineer</h2><p class="subtle">A sample role focused on reliable systems and technical decisions.</p><dl><dt>Focus</dt><dd>${state.goal}</dd><dt>Format</dt><dd>${modeName()} · ${state.duration} minutes</dd><dt>Topics</dt><dd>Ownership, reliable updates, and technical tradeoffs.</dd><dt>Feedback</dt><dd>${state.mode === "focused" ? "After your practice segment, with a chance to retry." : "At the end of the interview. No coaching between questions."}</dd></dl></aside>`;
 }
 function configure() {
   const goals = [
@@ -57,35 +67,35 @@ function configure() {
     "Clarity",
     "Concise answers",
   ];
-  return `<span class="eyebrow">01 / Set your intention</span><h1>What would you like to practice?</h1><div class="split"><div>
+  return `<h1>Set up your practice</h1><p class="lede">Choose what you want to work on and how you would like to practice.</p><div class="split"><div>
     <div class="field"><label for="goal">Practice goal</label><select id="goal">${goals.map((x) => `<option ${state.goal === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>
-    <fieldset><legend>Practice mode</legend>${[
-      ["focused", "Focused practice", "Work on one skill and retry an answer."],
+    <fieldset><legend>Practice mode</legend><div class="mode-options">${[
       [
-        "mock",
-        "Mock interview",
-        "Rehearse across role topics. Feedback comes at the end.",
+        "focused",
+        "Focused practice",
+        "Work on one skill, then retry your answer.",
       ],
+      ["mock", "Mock interview", "Cover several topics. Review at the end."],
     ]
       .map(
         ([v, title, sub]) =>
-          `<label class="choice"><input type="radio" name="mode" value="${v}" ${state.mode === v ? "checked" : ""}><span>${title}<small>${sub}</small></span></label>`,
+          `<label class="choice mode-choice"><input type="radio" name="mode" value="${v}" ${state.mode === v ? "checked" : ""}><span>${title}<small>${sub}</small></span></label>`,
       )
-      .join("")}</fieldset>
+      .join("")}</div></fieldset>
     <div class="field"><label for="duration">Duration</label><select id="duration">${["5", "10", "15"].map((x) => `<option value="${x}" ${state.duration === x ? "selected" : ""}>${x} minutes</option>`).join("")}</select></div>
-    <div class="field"><label for="source">Role context</label><select id="source"><option value="sample" ${state.source === "sample" ? "selected" : ""}>Use a sample role</option><option value="paste" ${state.source === "paste" ? "selected" : ""}>Pasted role description (sample)</option><option value="document" ${state.source === "document" ? "selected" : ""}>Role document (sample)</option></select></div>
-    ${state.source !== "sample" ? `<div class="feedback"><p>${state.source === "paste" ? "Preview of pasted role text" : "Sample role document selected: fictional-backend-role.txt"}</p><p class="subtle">Backend engineer working on inventory APIs, database transactions, and reliable retries.</p><p class="subtle">This prototype uses fixed fictional text. Personal input and file selection arrive in M2.</p></div>` : ""}
-    <label class="choice"><input id="resume" type="checkbox" ${state.resume ? "checked" : ""}><span>Include a sample resume <small>Optional fictional background in APIs and database projects.</small></span></label>
-    <div class="actions">${button("ready", "Continue to ready check")}${button("home", "Back", "quiet")}</div></div>${preview()}</div>`;
+    ${qaMode ? `<div class="field"><label for="source">Role context</label><select id="source"><option value="sample" ${state.source === "sample" ? "selected" : ""}>Sample role</option><option value="paste" ${state.source === "paste" ? "selected" : ""}>Role description</option><option value="document" ${state.source === "document" ? "selected" : ""}>Role document</option></select></div>` : ""}
+    ${state.source !== "sample" ? `<div class="feedback"><h2>Backend engineer</h2><p>Build reliable inventory services and explain the decisions behind them.</p><p class="subtle">Example role description. No document upload needed.</p></div>` : ""}
+    <label class="choice"><input id="resume" type="checkbox" ${state.resume ? "checked" : ""}><span>Include a sample resume<small>Add background in API and database projects.</small></span></label>
+    <div class="actions">${button("ready", "Continue")}${button("home", "Back", "quiet")}</div></div>${preview()}</div>`;
 }
 function ready() {
-  return `<span class="eyebrow">02 / Before you begin</span><h1>Make room for a good answer.</h1><div class="split"><div>
-    <div class="check"><h2>How your practice will be handled</h2><p>In the planned product, audio is transcribed to guide the conversation and support feedback. Keeping an audio recording for playback is optional.</p><p>Session content, including supplied documents, expires within 24 hours. You can delete it from review at any time. Withdrawing consent during practice stops capture and deletes the session.</p><p class="subtle">Here, everything is simulated in this tab. No personal content is collected or retained, and reloading clears the demo.</p></div>
-    <div class="check"><h2>Microphone check</h2><p id="mic-status" aria-live="polite">${state.mic ? "Simulated input detected. Your real microphone was not opened." : "Check the input before starting. This demo simulates permission and a healthy microphone."}</p>${button("mic", state.mic ? "Check again" : "Simulate microphone check", "secondary")}</div>
-    <div class="check"><h2>Hear the sample voice</h2><p class="subtle">Fictional candidate recording to preview the playback interaction. This is not the final interviewer voice.</p><audio controls preload="none" aria-label="Synthetic voice sample" src="${audio}"></audio></div>
-    <label class="choice"><input id="consent" type="checkbox" ${state.consent ? "checked" : ""}><span>I agree to transcription for this practice session.<small>Required for adaptive questions and evidence-linked feedback. Separate from microphone permission.</small></span></label>
-    <label class="choice"><input id="retain" type="checkbox" ${state.retain ? "checked" : ""}><span>Also keep audio for answer playback.<small>Optional. Without it, review includes transcript evidence only.</small></span></label>
-    <p id="start-help" class="subtle">${canStart() ? "Ready. The next action begins the simulated interview." : "To begin, complete the microphone check and agree to transcription."}</p>
+  return `<h1>Before you start</h1><p class="lede">Check your sound and choose what to include in your review.</p><div class="split"><div>
+    <section class="check"><h2>Check your sound</h2><p class="subtle">Play this short answer to check that you can hear it clearly.</p><audio controls preload="none" aria-label="Sound check" src="${audio}"></audio><div class="sound-confirm">${button("mic", state.mic ? "Check again" : "Sound is working", "secondary")}<span id="mic-status" aria-live="polite" class="subtle">${state.mic ? "Sound confirmed" : "Confirm when you are ready."}</span></div></section>
+    <section class="check"><h2>Your transcript and audio</h2><p class="subtle">This sample uses a prepared answer. Your microphone stays off.</p>
+    <label class="choice"><input id="consent" type="checkbox" ${state.consent ? "checked" : ""}><span>Allow a transcript for this session<small>Use the written answer to support your feedback.</small></span></label>
+    <label class="choice"><input id="retain" type="checkbox" ${state.retain ? "checked" : ""}><span>Include audio in my review<small>Replay the answer alongside the transcript.</small></span></label></section>
+    <details class="privacy"><summary>Privacy and deleting your session</summary><p>Your choices and review stay on this page. Closing or refreshing this page clears them. You can also delete the session at any time.</p><p>Ending keeps the review available here. Withdrawing consent clears the session.</p></details>
+    <p id="start-help" class="subtle">${canStart() ? "You are ready to start." : "Confirm your sound and allow a transcript to continue."}</p>
     <div class="actions">${button("begin", "Start practice", "", !canStart())}${button("configure", "Back to setup", "quiet")}</div></div>${preview()}</div>`;
 }
 function live() {
@@ -99,39 +109,39 @@ function live() {
   };
   const descriptions = {
     speaking: "Listen to the question. You can ask to hear it again.",
-    listening: "There is room to pause before you answer.",
+    listening: "Continue with the example answer when you are ready.",
     thinking: "The interviewer is considering your answer.",
-    paused: "The interview is paused. Input is paused too.",
+    paused: "Resume whenever you are ready.",
     reconnecting: "Input is paused while the connection recovers.",
-    finishing: "Input has stopped. Your practice segment is complete.",
+    finishing: "Your answer is ready to review.",
   };
-  return `<section class="live"><div class="meta"><span>${modeName()}${state.isRetry ? " · Answer retry" : ""} · ${state.goal}</span><span>${state.duration}:00 remaining · demo timer</span></div>
+  return `<section class="live"><div class="meta"><span>${modeName()}${state.isRetry ? " · Answer retry" : ""} · ${state.goal}</span><span>${state.duration}-minute session</span></div>
     <div class="voice ${["listening", "speaking"].includes(state.voice) && !state.muted ? "active" : ""}" aria-hidden="true">${"<i></i>".repeat(9)}</div>
-    <h1 aria-live="polite">${labels[state.voice]}</h1><p class="lede">${descriptions[state.voice]}</p>
-    <p class="subtle">Transcription ${state.voice === "paused" || state.muted ? "paused" : "on"} · Audio ${state.retain ? "retained for playback" : "not retained"} · Simulated</p>
+    <h1 aria-live="polite">${labels[state.voice]}</h1><p class="question">${question}</p><p class="lede">${descriptions[state.voice]}</p>
+    <p class="subtle">Transcript ${state.voice === "paused" || state.muted ? "paused" : "included"} · Review audio ${state.retain ? "included" : "off"} · Microphone off</p>
     <div class="actions">${button("mute", state.muted ? "Unmute" : "Mute", "secondary", state.voice === "finishing")}${button("repeat", "Repeat question", "secondary", ["paused", "finishing", "thinking"].includes(state.voice))}${button("pause", state.voice === "paused" ? "Resume" : "Pause for a moment", "secondary", state.voice === "finishing")}${button("end", "End interview", "secondary", state.voice === "finishing")}</div>
     <details id="captions"><summary>Optional captions</summary><p>${state.caption}</p></details>
-    <div class="actions">${button("sample-answer", state.isRetry ? "Use sample retry answer" : "Use sample answer", "", state.voice !== "listening" || state.muted)}${state.answered ? button("finish", state.isRetry ? "Finish retry" : "Finish sample segment", "secondary", state.voice === "finishing") : ""}</div>
-    <p class="subtle">Sample controls advance this flow without recording your voice.</p>
+    <div class="actions">${button("sample-answer", state.isRetry ? "Continue with revised answer" : "Continue with example answer", "", state.voice !== "listening" || state.muted)}${state.answered ? button("finish", state.isRetry ? "Finish retry" : "Review answer", "secondary", state.voice === "finishing") : ""}</div>
+
     <div class="actions">${button("help", "Help", "quiet")}${button("withdraw", "Withdraw consent and delete", "quiet")}</div></section>`;
 }
 function review() {
   if (!state.originalAnswered)
-    return `<span class="eyebrow">Practice ended</span><h1>No answer to review yet.</h1><p>You ended before the sample answer. There is no evidence for coaching.</p><div class="actions">${button("next", "Try focused practice")}${button("delete", "Delete session", "quiet")}</div>`;
-  return `<span class="eyebrow">04 / Reflect and retry · Sample feedback</span><h1>Lead with the problem you solved.</h1><p class="lede">Your implementation is concrete. Give the listener the goal before the mechanism.</p>
-    <div class="split"><div><article class="observation"><h2>Improve first: make the goal explicit</h2><p><strong>Observed:</strong> The answer opens with the endpoint you built, then names the implementation.</p><p><strong>Suggestion:</strong> Start by explaining that retries could apply the same update twice.</p>${button("evidence-gap", "Open improvement evidence", "secondary")}</article>
-    <article class="observation"><h2>Strength: a specific test result</h2><p><strong>Observed:</strong> You cite 100 requests, 20 duplicates, and one update per unique request.</p>${button("evidence-strength", "Open strength evidence", "secondary")}</article>
+    return `<span class="eyebrow">Practice ended</span><h1>No answer to review yet.</h1><p>The session ended before an answer was completed.</p><div class="actions">${button("next", "Try focused practice")}${button("delete", "Delete session", "quiet")}</div>`;
+  return `<span class="eyebrow">Practice review</span><h1>Start with the problem you solved.</h1><p class="lede">Explain the goal first, then describe your approach.</p>
+    <div class="split"><div><article class="observation"><h2>What to improve</h2><p><strong>Observed:</strong> The answer opens with the endpoint you built, then names the implementation.</p><p><strong>Suggestion:</strong> Start by explaining that retries could apply the same update twice.</p>${button("evidence-gap", "See opening in transcript", "secondary")}</article>
+    <article class="observation"><h2>What worked well</h2><p><strong>Observed:</strong> You cite 100 requests, 20 duplicates, and one update per unique request.</p>${button("evidence-strength", "See result in transcript", "secondary")}</article>
     ${state.evidence ? evidence() : ""}
-    <details><summary>Suggested answer structure</summary><p>Goal → your responsibility → decision → evidence → tradeoff.</p><p><strong>Authored example, not something you said:</strong> “I needed retries to be safe, so a duplicated request could not change inventory twice.”</p></details>
-    </div><aside class="preview"><h2>Your next step</h2><p>Retry this answer with the goal in the first sentence.</p>${button("retry", "Retry this answer")}<p class="subtle">One answer only. Then compare both attempts.</p><h3>Coverage and confidence</h3><p class="subtle">Reliable updates: supported by one sample answer. Broader backend depth: not observed. These examples are authored, not AI assessment.</p></aside></div>
-    <div class="actions">${state.retried ? button("compare", "Compare attempts", "secondary") : ""}${button("export", "Export sample report", "quiet")}${button("delete", "Delete session", "quiet")}</div>`;
+    <details><summary>Suggested answer structure</summary><p>Goal → your responsibility → decision → evidence → tradeoff.</p><p><strong>Suggested opening:</strong> “I needed retries to be safe, so a duplicated request could not change inventory twice.”</p></details>
+    </div><aside class="preview"><h2>Your next step</h2><p>Retry this answer with the goal in the first sentence.</p>${button("retry", "Retry this answer")}<p class="subtle">One answer only. Then compare both attempts.</p><h3>What this answer covers</h3><p class="subtle">This answer explains reliable updates. It does not yet show how you would handle other backend challenges.</p></aside></div>
+    <div class="actions">${state.retried ? button("compare", "Compare attempts", "secondary") : ""}${button("export", "Download review", "quiet")}${button("delete", "Delete session", "quiet")}</div>`;
 }
 function evidence() {
   const strength = state.evidence === "strength";
-  return `<section id="evidence" class="feedback" tabindex="-1"><h2>${strength ? "Strength evidence" : "Improvement evidence"}</h2><p class="subtle">Original answer · fictional transcript · ${strength ? "00:12 to 00:19" : "00:00 to 00:03"}</p><blockquote>${strength ? "In a sample test with one hundred requests, including twenty duplicates, each unique update applied once." : "I built the inventory update endpoint."}</blockquote>${state.retain ? `<audio id="evidence-audio" controls preload="metadata" aria-label="Original answer evidence audio" src="${audio}#t=${strength ? "12,19" : "0,3"}"></audio><p class="subtle">Timing is approximate in this authored sample. Play to hear the matching passage.</p>` : '<p class="subtle">Audio was not retained. Transcript evidence is still available.</p>'}</section>`;
+  return `<section id="evidence" class="feedback" tabindex="-1"><h2>${strength ? "Strength evidence" : "Improvement evidence"}</h2><p class="subtle">Original answer · ${strength ? "00:12 to 00:19" : "00:00 to 00:03"}</p><blockquote>${strength ? "In a sample test with one hundred requests, including twenty duplicates, each unique update applied once." : "I built the inventory update endpoint."}</blockquote>${state.retain ? `<audio id="evidence-audio" controls preload="metadata" aria-label="Original answer evidence audio" src="${audio}#t=${strength ? "12,19" : "0,3"}"></audio><p class="subtle">Play to hear this part of the answer.</p>` : '<p class="subtle">Audio is not included. You can still read the transcript.</p>'}</section>`;
 }
 function comparison() {
-  return `<span class="eyebrow">05 / Compare · Authored sample</span><h1>A clearer opening. The same evidence.</h1><p class="lede">The retry names the goal before explaining how the endpoint works.</p><div class="compare"><div><h2>Original answer</h2><blockquote>${original}</blockquote>${state.retain ? `<audio controls preload="none" aria-label="Original answer audio" src="${audio}"></audio>` : '<p class="subtle">Audio not retained.</p>'}</div><div><h2>Retry answer</h2><blockquote>${retry}</blockquote><p class="subtle">Authored text sample. No retry recording exists in this prototype.</p></div></div><div class="feedback"><h2>What changed</h2><p><strong>Evidence:</strong> The original opens “I built the inventory update endpoint.” The retry opens “My goal was to prevent duplicate inventory updates when clients retried.”</p><p><strong>Suggestion:</strong> Keep that goal-first opening, then practice explaining the expiry tradeoff. A single retry does not establish broader improvement.</p></div><div class="actions">${button("next", "Practice explaining tradeoffs")}${button("review", "Back to review", "secondary")}${button("export", "Export sample report", "quiet")}${button("delete", "Delete session", "quiet")}</div>`;
+  return `<span class="eyebrow">Answer comparison</span><h1>Compare your answers</h1><p class="lede">The retry names the goal before explaining how the endpoint works.</p><div class="compare"><div><h2>Original answer</h2><blockquote>${original}</blockquote>${state.retain ? `<audio controls preload="none" aria-label="Original answer audio" src="${audio}"></audio>` : '<p class="subtle">Audio is not included.</p>'}</div><div><h2>Retry answer</h2><blockquote>${retry}</blockquote><p class="subtle">Text example. Audio is not available for this answer.</p></div></div><div class="feedback"><h2>What changed</h2><p><strong>Evidence:</strong> The original opens “I built the inventory update endpoint.” The retry opens “My goal was to prevent duplicate inventory updates when clients retried.”</p><p><strong>Suggestion:</strong> Keep that goal-first opening, then practice explaining the expiry tradeoff. A single retry does not establish broader improvement.</p></div><div class="actions">${button("next", "Practice explaining tradeoffs")}${button("review", "Back to review", "secondary")}${button("export", "Download review", "quiet")}${button("delete", "Delete session", "quiet")}</div>`;
 }
 const failures = {
   permission: [
@@ -161,13 +171,13 @@ const failures = {
   ],
   report: [
     "Feedback is not ready yet",
-    "Your sample answer remains available in this tab. Retry feedback or inspect the available transcript. Reloading this prototype clears it; safe background processing is a later capability.",
+    "Your answer is still available here. Try again or read the transcript. Keep this page open to keep your session.",
     "Retry feedback",
   ],
 };
 function recovery() {
   const [title, description, label] = failures[state.fault];
-  return `<span class="eyebrow">${state.fault === "network" ? "Reconnecting · " : ""}Practice recovery · Simulated</span><h1 aria-live="assertive">${title}</h1><p class="lede">${description}</p>${state.fault === "report" ? `<details><summary>Available transcript</summary><blockquote>${state.isRetry ? retry : original}</blockquote></details>` : ""}<div class="actions">${button("recover", label)}${button(state.saved ? "delete" : "exit-recovery", state.saved ? "Delete session" : state.recoveryFrom === "ready" ? "Back to setup" : "End interview", "secondary")}${!state.saved && state.recoveryFrom === "live" ? button("withdraw", "Withdraw consent and delete", "quiet") : ""}</div>`;
+  return `<span class="eyebrow">${state.fault === "network" ? "Reconnecting · " : ""}Connection and sound</span><h1 aria-live="assertive">${title}</h1><p class="lede">${description}</p>${state.fault === "report" ? `<details><summary>Available transcript</summary><blockquote>${state.isRetry ? retry : original}</blockquote></details>` : ""}<div class="actions">${button("recover", label)}${button(state.saved ? "delete" : "exit-recovery", state.saved ? "Delete session" : state.recoveryFrom === "ready" ? "Back to setup" : "End interview", "secondary")}${!state.saved && state.recoveryFrom === "live" ? button("withdraw", "Withdraw consent and delete", "quiet") : ""}</div>`;
 }
 function render() {
   const active = document.activeElement;
@@ -178,7 +188,7 @@ function render() {
       : null;
   const screens = {
     start: () =>
-      `<section><span class="eyebrow">Interview practice / For you</span><h1>Find the words.<br>Then try them out.</h1><p class="lede">Practice a role-focused interview and leave with one clear way to improve your next answer.</p><div class="actions">${button("configure", "Start a practice session")}</div><p class="subtle">Start with a fictional backend role. No account or documents needed.</p><div class="support"><h2>Speak. Reflect. Try again.</h2><p>A focused segment or a realistic mock, followed by feedback tied to your words.</p></div></section>`,
+      `<section class="welcome"><div class="welcome-intro"><h1>Interview practice</h1><p class="lede">Work through an interview question and get specific feedback on your answer.</p><div class="actions">${button("configure", "Set up practice")}</div><p class="subtle">No account or documents needed.</p></div><aside class="welcome-details"><span class="eyebrow">Your first session</span><h2>Backend engineer</h2><p>Explain a technical decision, support it with evidence, and practice a clearer answer.</p><ol class="journey"><li><strong>Choose your focus</strong><span>One skill or a full mock interview.</span></li><li><strong>Work through a question</strong><span>Follow a prepared example answer.</span></li><li><strong>Review and retry</strong><span>See what worked and what to change.</span></li></ol></aside></section>`,
     configure,
     ready,
     live,
@@ -186,10 +196,19 @@ function render() {
     compare: comparison,
     recovery,
     preparing: () =>
-      `<span class="eyebrow">03 / Practice ended</span><h1 aria-live="polite">Preparing your feedback</h1><p>The simulated session has stopped. Your sample answer is available in this tab.</p><p class="subtle">Preparing observations and transcript links. This prototype cannot save work after you close or reload the page.</p><div class="actions">${button("review", "View sample feedback")}${button("delete", "Delete session", "quiet")}</div>`,
+      `<span class="eyebrow">Practice complete</span><h1 aria-live="polite">Preparing your feedback</h1><p>The interview has ended. Your answer is ready.</p><p class="subtle">Keep this page open while you review. Closing or refreshing this page clears the session.</p><div class="actions">${button("review", "View feedback")}${button("delete", "Delete session", "quiet")}</div>`,
     deleted: () =>
-      `<span class="eyebrow">You are in control</span><h1 aria-live="polite">Session cleared.</h1><p>The demo consent choices, answers, and comparison have been cleared. No personal content was collected.</p><div class="actions">${button("configure", "Start a new practice")}</div>`,
+      `<span class="eyebrow">You are in control</span><h1 aria-live="polite">Session cleared.</h1><p>Your answers, review, and session choices have been cleared.</p><div class="actions">${button("configure", "Start a new practice")}</div>`,
   };
+  const phase = ["start", "configure", "ready"].includes(state.screen)
+    ? 0
+    : ["live", "recovery"].includes(state.screen) && !state.saved
+      ? 1
+      : 2;
+  document.querySelector("#steps").innerHTML =
+    state.screen === "start" || state.screen === "deleted"
+      ? ""
+      : `<ol>${["Set up", "Practice", "Review"].map((label, index) => `<li ${phase === index ? 'aria-current="step"' : ""}>${label}</li>`).join("")}</ol>`;
   const captionsOpen = document.querySelector("#captions")?.open;
   main.innerHTML = screens[state.screen]();
   if (captionsOpen && document.querySelector("#captions"))
@@ -202,17 +221,18 @@ function render() {
         : state.screen === "preparing" && state.answered
           ? ["report"]
           : [];
-  document.querySelector("#scenarios").innerHTML = allowed.length
-    ? allowed
-        .map((x) =>
-          button(
-            `fault-${x}`,
-            `${x[0].toUpperCase()}${x.slice(1)} failure`,
-            "secondary",
-          ),
-        )
-        .join("")
-    : "<p>No failure scenarios at this step. Continue to a ready check, interview, or feedback preparation.</p>";
+  if (qaMode)
+    document.querySelector("#scenarios").innerHTML = allowed.length
+      ? allowed
+          .map((x) =>
+            button(
+              `fault-${x}`,
+              `${x[0].toUpperCase()}${x.slice(1)} failure`,
+              "secondary",
+            ),
+          )
+          .join("")
+      : "<p>No failure scenarios at this step. Continue to a ready check, interview, or feedback preparation.</p>";
   if (focusSelector) document.querySelector(focusSelector)?.focus();
 }
 function start() {
@@ -247,7 +267,7 @@ function confirm(kind) {
     state.voice = "paused";
     render();
   }
-  dialog.innerHTML = `<h2 id="dialog-title">${kind === "withdraw" ? "Withdraw consent and delete?" : deleting ? "Delete this session?" : "End this interview?"}</h2><p>${deleting ? "This stops the session and clears its sample answers, consent, and comparison. This cannot be undone." : "End the conversation and keep consented work for review. To erase the session instead, choose withdraw consent and delete."}</p><div class="actions">${button(deleting ? "confirm-delete" : "confirm-end", deleting ? "Delete session now" : "End and review")}${button("cancel", "Keep session", "secondary")}</div>`;
+  dialog.innerHTML = `<h2 id="dialog-title">${kind === "withdraw" ? "Withdraw consent and delete?" : deleting ? "Delete this session?" : "End this interview?"}</h2><p>${deleting ? "This stops the session and clears its answers, review, and session choices. This cannot be undone." : "End the conversation and keep your answers for review. To erase the session instead, choose withdraw consent and delete."}</p><div class="actions">${button(deleting ? "confirm-delete" : "confirm-end", deleting ? "Delete session now" : "End and review")}${button("cancel", "Keep session", "secondary")}</div>`;
   dialog.showModal();
 }
 function closeDialog() {
@@ -374,37 +394,43 @@ const actions = {
   "exit-recovery": () => {
     state.fault = null;
     if (state.recoveryFrom === "ready") go("configure");
-    else { state.voice = "paused"; go("live"); confirm("end"); }
+    else {
+      state.voice = "paused";
+      go("live");
+      confirm("end");
+    }
   },
   export: () => {
-    const report = {
-      synthetic: true,
-      notice:
-        "Authored V2-008 flow study, not a real interview or AI assessment.",
-      goal: state.goal,
-      mode: state.mode,
+    const report = [
+      "Practice review",
+      "Sample session using example answers.",
+      "",
+      "Role: Backend engineer",
+      `Focus: ${state.goal}`,
+      `Format: ${modeName()}`,
+      "",
+      "Original answer",
       original,
-      observations: [
-        {
-          observed: "Opens with the implementation before explaining the goal.",
-          evidence: "I built the inventory update endpoint.",
-          suggestion: "Name the duplicate-update problem first.",
-        },
-        {
-          observed: "Includes a concrete test result.",
-          evidence:
-            "In a sample test with one hundred requests, including twenty duplicates, each unique update applied once.",
-        },
-      ],
-      retry: state.retried ? retry : null,
-      next_practice: "Practice explaining the expiry tradeoff.",
-    };
+      "",
+      "What to improve",
+      "Start with the problem you solved, then describe your approach.",
+      'Opening: "I built the inventory update endpoint."',
+      "Suggestion: Explain that retries could apply the same update twice.",
+      "",
+      "What worked well",
+      "You supported your answer with a specific test result.",
+      'Evidence: "In a sample test with one hundred requests, including twenty duplicates, each unique update applied once."',
+      ...(state.retried ? ["", "Revised answer", retry] : []),
+      "",
+      "Next practice",
+      "Practice explaining the expiry tradeoff.",
+    ].join("\n");
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }),
+      new Blob([report], { type: "text/plain;charset=utf-8" }),
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = "synthetic-practice-report.json";
+    link.download = "practice-review.txt";
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
@@ -413,7 +439,7 @@ document.addEventListener("click", (event) => {
   const target = event.target.closest("button[data-action]");
   if (!target || target.disabled) return;
   const action = target.dataset.action;
-  if (action.startsWith("fault-")) {
+  if (action.startsWith("fault-") && qaMode) {
     clearTimeout(pending);
     state.fault = action.slice(6);
     state.recoveryFrom = state.screen;

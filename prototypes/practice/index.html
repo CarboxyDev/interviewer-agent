@@ -8,31 +8,21 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
-    <title>Practice room · Interactive prototype</title>
+    <title>Practice Room · Interview practice</title>
     <link rel="stylesheet" href="practice.css" />
     <script src="practice.js" defer></script>
   </head>
   <body>
     <a class="skip" href="#workspace">Skip to practice</a>
     <header>
-      <a href="./" aria-label="Practice room home"
-        >practice room<span aria-hidden="true">.</span></a
-      ><span>V2 / Flow study</span>
+      <a href="./" aria-label="Practice room home">Practice Room</a>
+      <span class="session-label">Sample session</span>
     </header>
-    <aside class="notice">
-      Interactive prototype · Fictional content only. No microphone, uploads, AI
-      calls, or saved sessions. Reloading clears this demo.
-    </aside>
+    <nav id="steps" aria-label="Practice steps"></nav>
     <main id="workspace" tabindex="-1"></main>
     <footer>
-      <span>A private space to speak, reflect, and try again.</span>
-      <details id="lab">
-        <summary>Prototype scenarios</summary>
-        <p>
-          Simulate recovery paths. These controls are for this flow study only.
-        </p>
-        <div id="scenarios"></div>
-      </details>
+      <span>Example answers · Microphone off</span>
+      <span>Your session clears when you close or refresh this page.</span>
     </footer>
     <dialog id="confirmation" aria-labelledby="dialog-title"></dialog>
   </body>
