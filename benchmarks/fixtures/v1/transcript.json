@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "dataset_id": "candidate-practice-v1",
+  "synthetic": true,
+  "description": "Authored reference utterances, not model output or a recorded interview. Each timestamp is local to its clip; these are independent inputs, not a consented session transcript.",
+  "utterances": [
+    {
+      "id": "consent",
+      "speaker": "candidate",
+      "text": "Yes, I consent to recording and transcription for this synthetic practice session.",
+      "started_at_ms": 0,
+      "ended_at_ms": 4672,
+      "audio_path": "audio/consent.wav"
+    },
+    {
+      "id": "answer",
+      "speaker": "candidate",
+      "text": "I built the inventory update endpoint. I used a client supplied idempotency key and a unique database constraint. I stored the result in the same transaction as the update, so a retry returned the saved result. In a sample test with one hundred requests, including twenty duplicates, each unique update applied once. The tradeoff was storing request results and deciding when to expire them.",
+      "started_at_ms": 0,
+      "ended_at_ms": 23297,
+      "audio_path": "audio/answer.wav"
+    },
+    {
+      "id": "repeat",
+      "speaker": "candidate",
+      "text": "Could you repeat the question, please?",
+      "started_at_ms": 0,
+      "ended_at_ms": 2099,
+      "audio_path": "audio/repeat.wav"
+    },
+    {
+      "id": "withdrawal",
+      "speaker": "candidate",
+      "text": "I withdraw my consent. Stop recording and delete my session data.",
+      "started_at_ms": 0,
+      "ended_at_ms": 3955,
+      "audio_path": "audio/withdrawal.wav"
+    },
+    {
+      "id": "end",
+      "speaker": "candidate",
+      "text": "That is all for today. I would like to end the interview now. Thank you.",
+      "started_at_ms": 0,
+      "ended_at_ms": 4015,
+      "audio_path": "audio/end.wav"
+    }
+  ]
+}

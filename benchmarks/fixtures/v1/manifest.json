@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "dataset_id": "candidate-practice-v1",
+  "synthetic": true,
+  "provenance": {
+    "text": "Original fictional content authored for V2-002. No candidate or session data used.",
+    "speech": "Offline macOS say, Samantha voice, 165 words per minute. No microphone or external provider used.",
+    "os_version": "26.6.2",
+    "conversion": "FFmpeg PCM signed 16-bit little-endian WAV, mono, 24000 Hz, metadata removed.",
+    "ffmpeg_version": "ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers",
+    "silence": "24000 zero-valued PCM samples generated with Python wave."
+  },
+  "assets": [
+    {
+      "path": "audio/consent.wav",
+      "kind": "speech",
+      "frames": 112120,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "622d28e4c301e3adcce5588cb9d246f8719d3c808f89443a3f361a0d2d99aee4",
+      "size_bytes": 224284
+    },
+    {
+      "path": "audio/answer.wav",
+      "kind": "speech",
+      "frames": 559137,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "d5f7dd882e0bae0ca02c363698bd5cca07f907b190ac39014f6ef88b35f0f6ab",
+      "size_bytes": 1118318
+    },
+    {
+      "path": "audio/repeat.wav",
+      "kind": "speech",
+      "frames": 50387,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "95733b25cde75d8cc26ab09203665f79cb9f5b05277f155658beafea101631ca",
+      "size_bytes": 100818
+    },
+    {
+      "path": "audio/withdrawal.wav",
+      "kind": "speech",
+      "frames": 94924,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "d1425e3ca42eeed05fc709306c4bb89a4e8b58bd20539b92591d33b8013c83c4",
+      "size_bytes": 189892
+    },
+    {
+      "path": "audio/silence.wav",
+      "kind": "silence",
+      "frames": 24000,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "e5ea01a23fcb85fd8e608c5c672ea5c22dfab6b0e581d782242f478e4b1c5900",
+      "size_bytes": 48044
+    },
+    {
+      "path": "resume.txt",
+      "kind": "resume",
+      "sha256": "470d62ea9fe777740e4de8705760c6556abd29e1503ed98e7c97775e2bc24e28",
+      "size_bytes": 976
+    },
+    {
+      "path": "role.txt",
+      "kind": "role",
+      "sha256": "fc0a241818d89a4f6a7866625516303dcde2ff8e8c15031a7f575f497a9374cb",
+      "size_bytes": 772
+    },
+    {
+      "path": "transcript.json",
+      "kind": "reference_transcript",
+      "sha256": "6519aec57b40fdff55a24ec610aec0077197a01ff91e037010c6c3e931090b3a",
+      "size_bytes": 1834
+    },
+    {
+      "path": "audio/end.wav",
+      "kind": "speech",
+      "frames": 96369,
+      "sample_rate_hz": 24000,
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sha256": "3fef2f0dc0482fa5d23e8bde1b0610e79aea1fbed8c82ceb641c95eac7323edf",
+      "size_bytes": 192782
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+SYNTHETIC SAMPLE RESUME. Fictional content for public testing only.
+
+Candidate: Sample Candidate
+Target: Backend software engineer
+
+Experience
+Built a fictional inventory service for the Example Workshop project.
+Implemented Python HTTP endpoints, PostgreSQL transactions, and idempotent request handling.
+Added integration tests for duplicate requests and a failed downstream notification.
+Collaborated on deployment checks but did not own infrastructure or manage a team.
+
+Project evidence
+Used a client-supplied idempotency key with a unique database constraint.
+Stored the request result in the same transaction as the inventory update.
+A repeat request returned the stored result instead of applying the update again.
+The sample load test used 100 requests, including 20 duplicates; each unique update applied once.
+No production performance or commercial impact is claimed.
+
+Practice goal
+Explain one technical decision, its tradeoff, and the evidence used to check it.

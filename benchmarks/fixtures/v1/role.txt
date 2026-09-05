@@ -1,0 +1,18 @@
+SYNTHETIC SAMPLE ROLE. Fictional content for public testing only.
+
+Role: Backend software engineer
+Organization: Example Workshop, a fictional practice project
+
+Work
+Design maintainable Python APIs and relational data models.
+Handle retries, partial failures, and consistent database updates.
+Write focused automated tests and explain technical tradeoffs to teammates.
+
+Interview focus
+API correctness, idempotency, transaction boundaries, testing, and clear explanations.
+Ask about the candidate's own contribution before assuming ownership.
+Infrastructure leadership and people management are not required.
+
+Practice format
+A short role-focused discussion with one question at a time.
+Use only the supplied project evidence. Missing details should prompt clarification.
