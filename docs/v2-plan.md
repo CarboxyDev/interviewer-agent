@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-010, typed UI foundation, themes and motion\
+Current task: V2-004, live V1 baseline collection (blocked)\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -132,8 +132,8 @@ candidate's resume or role description under the same consent, retention, and de
 
 ### UX design direction
 
-- Visual thesis: a calm, focused practice room with warm neutral surfaces, strong typography, one
-  restrained accent, and voice activity as the main visual signal.
+- Visual thesis: a calm, focused practice room with clean white and gray light surfaces, neutral
+  gray and charcoal dark surfaces, strong typography, and voice activity as the main visual signal.
 - Content plan: orient, configure, practice, reflect, and retry. Each screen has one dominant job.
 - Interaction thesis: a clear transition into interview focus, responsive voice-state feedback, and
   direct evidence-to-playback navigation during review.
@@ -299,7 +299,7 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
   distinct goal prompts, evidence, retries and exports; role preserved for next practice; no
   mismatched audio or claims of live adaptation; focused runtime and browser checks pass.
 
-- [ ] V2-010 Establish React/TypeScript, Tailwind v4 and shadcn/ui for the sample web app.
+- [x] V2-010 Establish React/TypeScript, Tailwind v4 and shadcn/ui for the sample web app.
   Acceptance: existing role/consent/review journeys preserved; Light/Dark/System themes persist
   without storing session data; accessible icons, reduced-motion-aware transitions, production build
   and browser theme checks pass. API contracts and live audio remain M2 work.
@@ -463,6 +463,7 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | Support focused practice and mock interview modes | Accepted | Candidates need both realistic rehearsal and a short improvement loop |
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
 | 2026-09-05 | V2-010: bring the typed UI foundation forward; Tailwind v4, shadcn/ui and Lucide icons | Accepted | Explicit user request supersedes the CSS Modules choice. Migrate the sample flow to React without changing Python/provider boundaries; persist only the theme preference. Baseline and remaining M2 acceptance criteria stay open |
+| 2026-09-05 | V2-010: use a neutral light and dark palette | Accepted | Clean white and gray light surfaces plus gray and charcoal dark surfaces keep the practice room calm and business-friendly; red remains reserved for destructive actions |
 | 2026-09-05 | V2-009: role-neutral runtime defaults and authored multi-role sample scenarios | Accepted | User requested dynamic, role-relevant interviewing and UI. Runtime prompt changes intentionally diverge from V1; retain its pinned archive/image and fixtures. Sample scenarios remain offline; real browser adaptation stays in M2/M4 |
 | 2026-09-05 | V2-004: conservative raw-event latency analyzer, separated by stage/phase/operation | Accepted | Excludes ambiguous failed/interrupted playback samples and keeps unknown latency/cost missing; no V1 instrumentation changes |
 | 2026-09-05 | V2-004: offline preflight, pinned build context, and unscored campaign skeleton | Accepted | Makes provenance and missing live prerequisites repeatable without provider calls, altering V1, or bypassing admission safeguards |
@@ -472,11 +473,12 @@ The release suite must include typical, edge, and adversarial cases:
 
 ## Current status
 
-- V2-010 is current at user priority: migrate the sample experience into the planned `web/`
-  React workspace with Tailwind v4, shadcn/ui, themes and restrained animation. V2-201 remains
-  unchecked because shared API contracts and live browser integration are outside this task.
-  Foundation builds with strict TypeScript, Oxlint and Prettier checks; sample migration and
-  browser validation remain underway.
+- V2-010 is complete: the maintained sample experience now runs from the `web/` React workspace
+  with Tailwind v4, shadcn/ui, accessible Lucide icons, neutral light/dark/system themes and
+  reduced-motion-aware transitions. The theme preference is the only browser-persisted value.
+  All 41 preserved journeys and 16 theme, contrast, motion, persistence, responsive-layout and
+  select-sizing checks pass. V2-201 remains unchecked because shared API contracts and live browser
+  integration are outside this task.
 
 - V2-009 is complete: role-neutral runtime defaults, four role examples, and two supported goals
   per role. Preview, questions, follow-ups, coaching, evidence, retry and downloads follow the
@@ -544,6 +546,7 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-009 sample UI | Four roles with two goal variants; 41 Chromium checks pass, including complete journeys, exports, current-question repeat and consent/audio isolation; `make check`: 168 tests; in-app finance setup/review inspected; see `docs/validation/V2-009-role-aware-practice.md` | Authored sample content, no live browser/provider integration; only engineering has matching review audio; M0 remains open |
 | 2026-09-05 | V2-009 runtime | `9b03486`; role-neutral planning, transcription and deterministic recovery; `make check`: 168 tests, Ruff, format, strict Mypy, 88.92% coverage | Fake provider tests verify context wiring and fallback behavior, not live model quality; sample UI subsequently validated separately; pinned V1 image/archive retained unchanged |
 | 2026-09-05 | V2-008 UI refinement | Removed development copy, slogans, fake countdown and default QA controls; compact layout, separate sound/transcript gates and readable text review; 32 Chromium tests and `make check` with 161 tests pass; in-app visual inspection of start, setup, readiness and live views | Sample content only; no live capture, provider integration, durable storage or new deployment |
+| 2026-09-05 | V2-010 | `23f66e1`, `65bb168`; maintained app moved to `web/`; Tailwind v4 and shadcn/ui foundation; React sample-flow migration; neutral light/dark/system themes; accessible Lucide controls; reduced-motion support; CI and preview-server updates; clean `npm ci`; web lint, Prettier, strict TypeScript and production build pass; 57 Chromium checks pass, including 41 preserved journeys; `make check`: 168 tests, 88.92% coverage; light/dark setup, live, review and dialogs inspected | Authored sample content only; no live browser audio, provider integration, generated API contracts, deployment, or V2-004 baseline; V2-201 and M2 remain open |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 
 ## Plan change log
@@ -559,3 +562,4 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-004 preparation: added provenance tooling and 25 checks; built and verified dedicated pinned image; live campaign remains blocked |
 | 2026-09-05 | V2-004 analysis: added conservative phase-separated raw-event aggregation and 33 tests; unrun campaign remains explicitly unmeasured |
 | 2026-09-05 | Refined V2-008 for candidate-facing use: plain copy, compact layout, QA-only recovery controls and readable downloads; 32 browser checks pass |
+| 2026-09-05 | Completed V2-010 React migration, neutral theme system, browser validation and maintained-app move to `web/`; V2-004 and M0 remain open |
