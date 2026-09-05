@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-004, run and record the V1 baseline (next)\
+Current task: V2-006, select the typed web stack\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -290,7 +290,7 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
 - [x] V2-002 Create synthetic resume, role, transcript, and audio fixtures safe for the public repo.
 - [x] V2-003 Define the benchmark environment, dataset version, metric definitions, and run format.
 - [ ] V2-004 Run and record the V1 conversation, latency, reliability, and cost baseline.
-- [ ] V2-005 Document the current module dependency map and identify Meet-specific engine coupling.
+- [x] V2-005 Document the current module dependency map and identify Meet-specific engine coupling.
 - [ ] V2-006 Decide the web stack and record the choice in the Decision log.
 - [ ] V2-007 Decide the first public hosting shape and record data-flow and cost boundaries.
 - [ ] V2-008 Validate the practice modes and screen flow with a low-fidelity interactive prototype.
@@ -463,9 +463,13 @@ The release suite must include typical, edge, and adversarial cases:
 - V2-002 completed: pinned fictional resume, role, reference utterances, and synthesized audio.
 - V2-003 completed: `benchmarks/README.md` defines the environment, metric boundaries, fixed probe
   matrix, failure accounting, and versioned `benchmarks/run-template.json`.
-- Next: V2-004 live baseline preflight, including isolated synthetic candidate audio, authenticated
-  Meet access, effective model configuration, and bounded, attributable provider usage. These
-  prerequisites have not been verified in this work session.
+- V2-004 preflight restored Docker and verified local container readiness. Collection remains
+  blocked: the installed image differs in four runtime modules, its retry limits are disabled, and
+  isolated candidate audio, campaign authorization, and bounded attributable spend are unverified.
+  See `benchmarks/results/2026-09-05-v1-preflight.md`; no live attempt or provider call was made.
+- V2-005 completed: `docs/v2-module-map.md` maps all 19 modules and identifies lifecycle, filesystem,
+  recording, policy, and process-ownership coupling that must be addressed in M1.
+- Current work: V2-006 and V2-007 within M0 while the fixed live campaign remains unavailable.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
   source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.
@@ -480,6 +484,7 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-001 | `42a625a`; user authorized implementation of the current plan; scope, non-goals, UX contract, milestone order, and release targets accepted | Release targets remain unmeasured goals |
 | 2026-09-05 | V2-002 | `d8aff0d`; `benchmarks/fixtures/v1/manifest.json`; 11 focused fixture checks pass, covering hashes, V1 document extraction, transcript clip bounds, PCM format, nonempty speech, silence, and V1 control-intent baseline | One synthetic voice and role; V1 repeat guard misses the polite fixture wording; no live STT accuracy or conversation-quality claim |
 | 2026-09-05 | V2-003 | `benchmarks/README.md` and `benchmarks/run-template.json`; template checked against dataset SHA-256, 20-attempt probe matrix, and V1 source settings; `make check` passes with 103 tests, 88.92% coverage, Ruff, format, and strict Mypy | Protocol only; live latency, cost, interruption, and Meet reliability remain unmeasured; M0 stays open |
+| 2026-09-05 | V2-005 | `docs/v2-module-map.md`; AST inventory of all 19 modules and source trace of service, runner, ports, adapters, persistence, API, and consent/finalization paths | Source audit only; extraction awaits baseline and M1 replay coverage |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 
 ## Plan change log
@@ -489,3 +494,4 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | Created the V2 candidate practice product plan and checklist |
 | 2026-09-05 | Simplified plan metadata and added the candidate practice UX contract |
 | 2026-09-05 | Approved V2-001 and completed V2-002/V2-003; recorded baseline behavior gaps and live measurement limits |
+| 2026-09-05 | Recorded V2-004 preflight blockers and completed the V2-005 module coupling audit |

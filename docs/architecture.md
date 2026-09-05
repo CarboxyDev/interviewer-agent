@@ -1,5 +1,7 @@
 # Architecture
 
+For the V2 extraction audit, see the [module map and engine coupling](v2-module-map.md).
+
 ## Shape
 
 The service is an async modular monolith. Domain code depends on ports, and external systems are
