@@ -16,3 +16,6 @@ data/
 dist/
 playwright-report/
 test-results/
+
+node_modules/
+*.tsbuildinfo

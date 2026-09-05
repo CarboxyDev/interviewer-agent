@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  --background: #fafbf9;
+  --foreground: #25342f;
+  --card: #ffffff;
+  --card-foreground: #25342f;
+  --popover: #ffffff;
+  --popover-foreground: #25342f;
+  --primary: #285e4b;
+  --primary-foreground: #ffffff;
+  --secondary: #edf2ec;
+  --secondary-foreground: #304b3f;
+  --muted: #f0f4ee;
+  --muted-foreground: #58685e;
+  --accent: #edf2ec;
+  --accent-foreground: #25342f;
+  --destructive: #b42318;
+  --border: #c7d2c9;
+  --input: #b7c4b9;
+  --ring: #85652b;
+  --radius: 0.375rem;
+}
+.dark {
+  color-scheme: dark;
+  --background: #151c19;
+  --foreground: #e5ece7;
+  --card: #1d2721;
+  --card-foreground: #e5ece7;
+  --popover: #1d2721;
+  --popover-foreground: #e5ece7;
+  --primary: #99c9ae;
+  --primary-foreground: #142a20;
+  --secondary: #29382f;
+  --secondary-foreground: #e5ece7;
+  --muted: #202c25;
+  --muted-foreground: #a4b6aa;
+  --accent: #29382f;
+  --accent-foreground: #e5ece7;
+  --destructive: #ff9b91;
+  --border: #415548;
+  --input: #536b5a;
+  --ring: #d1b576;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply m-0 bg-background text-foreground font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  button,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:enabled,
+  summary {
+    cursor: pointer;
+  }
+  option {
+    background: var(--card);
+    color: var(--foreground);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

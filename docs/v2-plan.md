@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-004, live baseline collection (blocked on external setup)\
+Current task: V2-010, typed UI foundation, themes and motion\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -299,6 +299,11 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
   distinct goal prompts, evidence, retries and exports; role preserved for next practice; no
   mismatched audio or claims of live adaptation; focused runtime and browser checks pass.
 
+- [ ] V2-010 Establish React/TypeScript, Tailwind v4 and shadcn/ui for the sample web app.
+  Acceptance: existing role/consent/review journeys preserved; Light/Dark/System themes persist
+  without storing session data; accessible icons, reduced-motion-aware transitions, production build
+  and browser theme checks pass. API contracts and live audio remain M2 work.
+
 Exit criteria:
 
 - The product contract is approved.
@@ -457,6 +462,7 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | Keep the live interview distraction-free and move technical detail to review | Accepted | Realistic practice requires attention on the conversation rather than a dashboard |
 | 2026-09-05 | Support focused practice and mock interview modes | Accepted | Candidates need both realistic rehearsal and a short improvement loop |
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
+| 2026-09-05 | V2-010: bring the typed UI foundation forward; Tailwind v4, shadcn/ui and Lucide icons | Accepted | Explicit user request supersedes the CSS Modules choice. Migrate the sample flow to React without changing Python/provider boundaries; persist only the theme preference. Baseline and remaining M2 acceptance criteria stay open |
 | 2026-09-05 | V2-009: role-neutral runtime defaults and authored multi-role sample scenarios | Accepted | User requested dynamic, role-relevant interviewing and UI. Runtime prompt changes intentionally diverge from V1; retain its pinned archive/image and fixtures. Sample scenarios remain offline; real browser adaptation stays in M2/M4 |
 | 2026-09-05 | V2-004: conservative raw-event latency analyzer, separated by stage/phase/operation | Accepted | Excludes ambiguous failed/interrupted playback samples and keeps unknown latency/cost missing; no V1 instrumentation changes |
 | 2026-09-05 | V2-004: offline preflight, pinned build context, and unscored campaign skeleton | Accepted | Makes provenance and missing live prerequisites repeatable without provider calls, altering V1, or bypassing admission safeguards |
@@ -465,6 +471,12 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | V2-007: one Fly.io Machine/worker and private volume, browser-only public composition, snapshots disabled before candidate data | Accepted | See [hosting decision](decisions/V2-007-public-hosting.md); bounded demo concurrency, explicit 24-hour retention, owner isolation and spend admission; no deployment performed |
 
 ## Current status
+
+- V2-010 is current at user priority: migrate the sample experience into the planned `web/`
+  React workspace with Tailwind v4, shadcn/ui, themes and restrained animation. V2-201 remains
+  unchecked because shared API contracts and live browser integration are outside this task.
+  Foundation builds with strict TypeScript, Oxlint and Prettier checks; sample migration and
+  browser validation remain underway.
 
 - V2-009 is complete: role-neutral runtime defaults, four role examples, and two supported goals
   per role. Preview, questions, follow-ups, coaching, evidence, retry and downloads follow the
@@ -510,7 +522,7 @@ The release suite must include typical, edge, and adversarial cases:
   `benchmarks/results/2026-09-05-v1-analysis-validation.md`.
 - V2-004 live collection remains blocked by the authorized meeting, isolated audio
   route, effective campaign configuration, provider access, and enforced attributable budget.
-  All other M0 tasks are complete. V2-004 must pass before M0 closes and M1 engine work begins.
+  V2-010 is underway at user priority. V2-004 must pass before M0 closes and M1 engine work begins.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
   source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.

@@ -25,7 +25,7 @@ practice flow. [React build-from-scratch guide](https://react.dev/learn/build-a-
 | HTTP | Generated OpenAPI types plus a small native-fetch client | Keeps FastAPI contracts authoritative and error handling visible |
 | Realtime | Versioned JSON control/events and binary PCM over a same-origin WebSocket | Fits bidirectional audio and the existing async service; no second message broker |
 | Audio | Web Audio API with AudioWorklet capture/playback and explicit format conversion | Browser samples may differ from the pipeline's 24 kHz PCM format |
-| Styling | CSS variables and CSS Modules, semantic HTML controls | Supports the warm, calm visual contract without a dashboard component kit |
+| Styling | Tailwind CSS v4, semantic theme tokens, shadcn/ui and Lucide icons | User-approved V2-010 amendment; accessible reusable controls, light/dark/system themes and restrained motion |
 | Verification | Vitest + Testing Library; Playwright browser tests; existing Python checks | Separate state/component coverage, contract drift, browser behavior and live provider evidence |
 
 `openapi-typescript` generates TypeScript types from OpenAPI but does not provide runtime validation.
@@ -63,6 +63,9 @@ behavior still need the Chrome/Safari checks in M2. [getUserMedia](https://devel
 - A large component kit, global store, and query framework can be added for an observed need; they
   are not initial dependencies. Accessibility still requires keyboard/focus and assistive-tech QA.
 
-M0's prototype is a disposable flow experiment with synthetic state. It must not be treated as a
+V2-010 brings the typed UI scaffold forward at explicit user priority. The sample moves into `web/`,
+with API contract generation and live browser transport still pending V2-201 onward.
+
+M0's original prototype is a disposable flow experiment with synthetic state. It must not be treated as a
 working interview or bypass M1. No package installation, application scaffold, contract generation,
 or browser transport is implemented by this decision. V2-201 through V2-210 deliver and verify it.
