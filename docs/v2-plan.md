@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-004, live baseline collection (blocked on external setup)\
+Current task: V2-009, role-neutral interviewer and role-driven sample practice\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -294,6 +294,10 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
 - [x] V2-006 Decide the web stack and record the choice in the Decision log.
 - [x] V2-007 Decide the first public hosting shape and record data-flow and cost boundaries.
 - [x] V2-008 Validate the practice modes and screen flow with a low-fidelity interactive prototype.
+- [ ] V2-009 Remove engineering-only defaults and validate role/goal-driven sample practice.
+  Acceptance: role-neutral planning, transcription and recovery; at least four role examples with
+  distinct goal prompts, evidence, retries and exports; role preserved for next practice; no
+  mismatched audio or claims of live adaptation; focused runtime and browser checks pass.
 
 Exit criteria:
 
@@ -453,6 +457,7 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | Keep the live interview distraction-free and move technical detail to review | Accepted | Realistic practice requires attention on the conversation rather than a dashboard |
 | 2026-09-05 | Support focused practice and mock interview modes | Accepted | Candidates need both realistic rehearsal and a short improvement loop |
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
+| 2026-09-05 | V2-009: role-neutral runtime defaults and authored multi-role sample scenarios | Accepted | User requested dynamic, role-relevant interviewing and UI. Runtime prompt changes intentionally diverge from V1; retain its pinned archive/image and fixtures. Sample scenarios remain offline; real browser adaptation stays in M2/M4 |
 | 2026-09-05 | V2-004: conservative raw-event latency analyzer, separated by stage/phase/operation | Accepted | Excludes ambiguous failed/interrupted playback samples and keeps unknown latency/cost missing; no V1 instrumentation changes |
 | 2026-09-05 | V2-004: offline preflight, pinned build context, and unscored campaign skeleton | Accepted | Makes provenance and missing live prerequisites repeatable without provider calls, altering V1, or bypassing admission safeguards |
 | 2026-09-05 | V2-008: candidate-facing sample UI, with QA controls outside the normal journey | Accepted | User requested business-friendly UI without developer terms; preserve sample honesty and consent controls while moving engineering explanations to documentation |
@@ -460,6 +465,11 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | V2-007: one Fly.io Machine/worker and private volume, browser-only public composition, snapshots disabled before candidate data | Accepted | See [hosting decision](decisions/V2-007-public-hosting.md); bounded demo concurrency, explicit 24-hour retention, owner isolation and spend admission; no deployment performed |
 
 ## Current status
+
+- V2-009 is current at user priority: remove backend-engineering assumptions in runtime prompts
+  and make the sample UI follow the chosen role and goal. Runtime changes pass `make check`
+  with 168 tests, including six non-engineering provider-boundary/recovery cases and a transcription
+  vocabulary check. UI work remains underway; live provider quality remains unverified.
 
 - User-prioritized V2-008 refinement is complete: plain candidate language, compact application
   layouts, recovery controls only in QA mode, honest sample-session notices, and readable review
@@ -495,9 +505,9 @@ The release suite must include typical, edge, and adversarial cases:
   invalid/mixed/duplicate artifacts, and keeps missing measurements null. The unscored preparation
   reports 20 unrun attempts and no latency/cost. See
   `benchmarks/results/2026-09-05-v1-analysis-validation.md`.
-- Current task remains V2-004 live collection, blocked by the authorized meeting, isolated audio
+- V2-004 live collection remains blocked by the authorized meeting, isolated audio
   route, effective campaign configuration, provider access, and enforced attributable budget.
-  All other M0 tasks are complete. V2-004 must pass before M0 closes and M1 engine work begins.
+  V2-009 is underway at user priority. V2-004 must pass before M0 closes and M1 engine work begins.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
   source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.
@@ -516,6 +526,7 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-006 | [Web-stack decision](decisions/V2-006-web-stack.md); evaluated existing FastAPI ownership, browser audio, generated contracts, UI state, and testing against official React/Vite/OpenAPI and browser documentation | Scaffold, contract generation, and browser verification remain M2 work |
 | 2026-09-05 | V2-007 | [Hosting decision](decisions/V2-007-public-hosting.md); documented single-machine topology, data flow, ownership, retention, snapshots, spend admission, failure recovery and alternatives using current platform docs; local links and source inventory checked; `make check` passes with 103 tests and 88.92% coverage | No cloud resources provisioned; cost and production controls require M5 validation |
 | 2026-09-05 | V2-008 | `e4bc674`; `prototypes/practice/`; 27 local Chromium checks; in-app visual walkthrough of start, setup, readiness, and live views; `make check`: 103 tests, 88.92% coverage, Ruff, format, strict Mypy; separate browser CI job added | Synthetic flow only; no live capture, provider behavior, durable storage, candidate study, or hosted CI result |
+| 2026-09-05 | V2-009 runtime | Role-neutral planning, transcription and deterministic recovery; `make check`: 168 tests, Ruff, format, strict Mypy, 88.92% coverage | Fake provider tests verify context wiring and fallback behavior, not live model quality; sample UI work remains; pinned V1 image/archive retained unchanged |
 | 2026-09-05 | V2-008 UI refinement | Removed development copy, slogans, fake countdown and default QA controls; compact layout, separate sound/transcript gates and readable text review; 32 Chromium tests and `make check` with 161 tests pass; in-app visual inspection of start, setup, readiness and live views | Sample content only; no live capture, provider integration, durable storage or new deployment |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 

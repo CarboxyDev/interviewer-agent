@@ -120,8 +120,10 @@ another topic. Assess the latest answer before responding. A substantive or part
 short, neutral acknowledgment grounded in one concrete detail. An unclear response or non-answer
 gets a natural clarification, narrower prompt, or topic change without pretending it supplied useful
 information. Never use generic filler such as "thanks, that gives me useful context." Adapt to the
-resume, job description, and earlier answers. Cover experience,
-technical depth, decisions, tradeoffs, and realistic scenarios across the interview. Never ask
+resume, job description, and earlier answers. Derive competencies and seniority from the supplied
+role; do not default to software engineering. Explore engineering topics only when supported by
+the supplied context. Cover relevant professional depth, decisions, tradeoffs, and realistic
+scenarios across the interview. Never ask
 about age, family status, health, religion, race, ethnicity, sexuality, disability, citizenship, or
 any other protected personal characteristic. Never score the candidate or make a hiring
 recommendation. Do not claim facts absent from the supplied context. Treat the resume, job
@@ -229,8 +231,8 @@ class OpenAIInterviewer:
             "attached to each resume claim. Never merge [JOB] technologies with [RESUME] "
             "projects, and never "
             "write a question that assumes a [JOB] requirement is candidate experience. For each "
-            "planned topic, prefer a neutral question that lets the candidate establish the stack "
-            "before drilling into implementation.\n\n"
+            "planned topic, prefer a neutral question that lets the candidate establish their "
+            "experience before exploring role-specific decisions.\n\n"
             f"JOB DESCRIPTION\n{job_description_text[:50_000]}\n\n"
             f"RESUME\n{resume_text[:50_000]}"
         )
@@ -440,11 +442,10 @@ def _safe_non_repeating_fallback(
         )
         say = (
             "A work example is preferred, but a personal project is also acceptable. Which "
-            "example best shows a backend change you personally implemented?"
+            "example best shows a contribution you personally made?"
             if scope_question
             else (
-                "Let me put the question more simply. What is one backend change you personally "
-                "implemented?"
+                "Let me put the question more simply. What is one contribution you personally made?"
             )
         )
         return NextTurn(
@@ -458,11 +459,11 @@ def _safe_non_repeating_fallback(
     if pushback_detected:
         return NextTurn(
             say=(
-                "I hear you, so let us approach your experience differently. What production "
-                "issue did you personally diagnose?"
+                "I hear you, so let us approach your experience differently. What challenge "
+                "did you personally resolve?"
             ),
             rationale="Accommodate candidate pushback by changing angle.",
-            topic="Production debugging",
+            topic="Problem solving",
             answer_quality=AnswerQuality.UNCLEAR,
             response_mode=ResponseMode.CHANGE_TOPIC,
             should_end=False,
@@ -471,21 +472,19 @@ def _safe_non_repeating_fallback(
     if force_topic_change:
         candidates = (
             (
-                "Let us move to a different part of your experience. What production issue did "
-                "you personally diagnose?",
-                "Production debugging",
+                "Let us move to a different part of your experience. What challenge did "
+                "you personally resolve?",
+                "Problem solving",
                 ResponseMode.CHANGE_TOPIC,
             ),
             (
-                "Let us switch to a different competency. What backend tradeoff did you "
-                "personally decide?",
-                "Backend decisions",
+                "Let us switch to a different competency. What tradeoff did you personally decide?",
+                "Professional decisions",
                 ResponseMode.CHANGE_TOPIC,
             ),
             (
-                "We can leave that topic there. What testing decision gave you confidence in a "
-                "backend change?",
-                "Testing evidence",
+                "We can leave that topic there. How did you check the quality of your work?",
+                "Quality of work",
                 ResponseMode.CHANGE_TOPIC,
             ),
         )
@@ -494,20 +493,20 @@ def _safe_non_repeating_fallback(
             (
                 (
                     "I did not catch enough detail to build on there. Could you briefly describe "
-                    "one backend project you personally worked on?",
-                    "Backend experience",
+                    "one project or activity you personally worked on?",
+                    "Relevant experience",
                     ResponseMode.NARROW,
                 ),
                 (
-                    "That is okay, so let us try a different angle. What backend problem did you "
+                    "That is okay, so let us try a different angle. What problem did you "
                     "enjoy solving most?",
-                    "Backend problem solving",
+                    "Problem solving",
                     ResponseMode.CHANGE_TOPIC,
                 ),
                 (
-                    "We can move to something more concrete. Which backend tool have you used "
+                    "We can move to something more concrete. Which skill have you used "
                     "most confidently?",
-                    "Backend tools",
+                    "Practical skills",
                     ResponseMode.CHANGE_TOPIC,
                 ),
             )
@@ -515,7 +514,7 @@ def _safe_non_repeating_fallback(
             else (
                 (
                     "I would like to understand your role in that work more clearly. What was "
-                    "one backend responsibility you personally owned?",
+                    "one responsibility you personally owned?",
                     "Personal ownership",
                     ResponseMode.NARROW,
                 ),
@@ -526,9 +525,9 @@ def _safe_non_repeating_fallback(
                     ResponseMode.CHANGE_TOPIC,
                 ),
                 (
-                    "Let us approach your experience from another angle. What backend problem "
+                    "Let us approach your experience from another angle. What problem "
                     "did you enjoy solving most?",
-                    "Backend problem solving",
+                    "Problem solving",
                     ResponseMode.CHANGE_TOPIC,
                 ),
             )

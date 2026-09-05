@@ -79,7 +79,7 @@ def test_transcription_hints_prioritize_repeated_role_terms_and_are_bounded() ->
 
     assert set(hints.keywords[:3]) == {"FastAPI", "PostgreSQL", "Kafka"}
     assert len(hints.keywords) == 4
-    assert "English backend job interview" in hints.prompt
+    assert "English job interview" in hints.prompt
     assert len(hints.prompt) <= 220
 
 
@@ -155,3 +155,17 @@ def test_candidate_ownership_boundary_is_recognized() -> None:
     assert is_ownership_boundary("So I didn't change this myself, so I can't comment.")
     assert is_ownership_boundary("That was not my implementation.")
     assert not is_ownership_boundary("I implemented the cache change myself.")
+
+
+# V2-009: vocabulary must come from the selected role, including non-engineering roles.
+def test_transcription_hints_do_not_inject_engineering_context() -> None:
+    hints = build_transcription_hints(
+        resume_text="Prepared budget forecasts and variance reports.",
+        job_description_text="Finance analyst responsible for budgeting and forecasting.",
+        max_chars=300,
+        keyword_limit=10,
+    )
+    assert "Finance analyst" in hints.prompt
+    assert "variance reports" in hints.prompt
+    assert "backend" not in hints.prompt.lower()
+    assert "role-specific terms" in hints.prompt

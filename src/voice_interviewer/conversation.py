@@ -326,8 +326,8 @@ def build_transcription_hints(
             max_chars=max_chars,
         )
         prompt = (
-            "English backend job interview. Use the supplied role and resume terminology when "
-            f"transcribing names and technical terms. Context: {context}"
+            "English job interview. Use the supplied role and resume terminology when "
+            f"transcribing names and role-specific terms. Context: {context}"
         )
     return TranscriptionHints(prompt=prompt, keywords=keywords)
 

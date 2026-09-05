@@ -2,6 +2,8 @@ import json
 from types import SimpleNamespace
 from typing import Any, cast
 
+import pytest
+
 from voice_interviewer.domain import (
     AnswerQuality,
     NextTurn,
@@ -566,3 +568,85 @@ def test_realtime_transcription_events_are_correlated_and_deduplicated() -> None
     assert final.text == "I built the API."
     assert final.item_id == "item-1"
     assert duplicate is None
+
+
+# V2-009: exercise the provider boundary, including recovery after two rejected turns.
+@pytest.mark.parametrize(
+    ("role", "resume", "answer", "mode"),
+    [
+        (
+            "Finance analyst",
+            "Prepared monthly forecasts.",
+            "I am not sure I understand what you are asking.",
+            ResponseMode.CLARIFY,
+        ),
+        (
+            "Product manager",
+            "Prioritized customer needs.",
+            "Do you mean for work or a personal project?",
+            ResponseMode.CLARIFY,
+        ),
+        (
+            "Customer success manager",
+            "Improved customer onboarding.",
+            "I already told you.",
+            ResponseMode.CHANGE_TOPIC,
+        ),
+        ("Finance analyst", "Prepared monthly forecasts.", "I do not know.", ResponseMode.NARROW),
+        (
+            "Product manager",
+            "Prioritized customer needs.",
+            "I interviewed customers to understand their needs.",
+            ResponseMode.NARROW,
+        ),
+        (
+            "Customer success manager",
+            "Improved customer onboarding.",
+            "I did not own that implementation.",
+            ResponseMode.CHANGE_TOPIC,
+        ),
+    ],
+)
+async def test_role_context_reaches_provider_and_recovery_stays_role_neutral(
+    role: str, resume: str, answer: str, mode: ResponseMode
+) -> None:
+    invalid = NextTurn(
+        say="Tell me more.",
+        rationale="Invalid turn with no question.",
+        topic="Experience",
+        answer_quality=AnswerQuality.PARTIAL,
+        response_mode=ResponseMode.FOLLOW_UP,
+        should_end=False,
+    ).model_dump_json()
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def create(self, **kwargs: Any) -> SimpleNamespace:
+            self.calls.append(kwargs)
+            return SimpleNamespace(
+                output_text=f"[JOB] {role}; [RESUME] {resume}" if len(self.calls) == 1 else invalid
+            )
+
+    responses = FakeResponses()
+    interviewer = OpenAIInterviewer(
+        cast(Any, SimpleNamespace(responses=responses)), model="test-model", reasoning_effort="none"
+    )
+    plan = await interviewer.prepare(
+        resume_text=resume, job_description_text=role, duration_minutes=10
+    )
+    turn = await interviewer.next_turn(
+        plan=plan, transcript=[Utterance(Speaker.CANDIDATE, answer, 0, 1)], seconds_remaining=300
+    )
+    assert len(responses.calls) == 3
+    assert role in responses.calls[0]["input"]
+    assert resume in responses.calls[0]["input"]
+    assert plan in responses.calls[1]["input"]
+    assert answer in responses.calls[1]["input"]
+    assert "do not default to software engineering" in responses.calls[0]["instructions"]
+    assert turn.response_mode is mode
+    assert spoken_turn_issue(turn, latest_answer=answer) is None
+    assert not any(
+        term in turn.say.lower() for term in ("backend", "production", "database", "endpoint")
+    )
