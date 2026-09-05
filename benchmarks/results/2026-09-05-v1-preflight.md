@@ -7,7 +7,8 @@ meeting join, microphone capture, or benchmark interview was started.
 ## Observations
 
 - The Docker daemon was initially unavailable. Launching the installed Docker application by its
-  full path restored it. The existing, stopped Compose service was started for readiness checks.
+  full path restored it. The existing, stopped Compose service was started for readiness checks,
+  then stopped again after inspection. Docker was left running; demo settings were not changed.
 - Native macOS doctor failed browser, PulseAudio tools, and audio devices. Inside the existing Linux
   container, `voice-interviewer doctor` passed all seven local readiness checks. `/health/ready`
   returned `status: ok`. These checks do not establish signed-in Meet access or provider access.
