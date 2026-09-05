@@ -2,7 +2,7 @@
 
 Status: In progress, product contract approved\
 Current milestone: M0, product contract and benchmark baseline\
-Current task: V2-008, interactive practice-flow prototype (next)\
+Current task: V2-004, offline baseline preparation (live collection blocked)\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -293,7 +293,7 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
 - [x] V2-005 Document the current module dependency map and identify Meet-specific engine coupling.
 - [x] V2-006 Decide the web stack and record the choice in the Decision log.
 - [x] V2-007 Decide the first public hosting shape and record data-flow and cost boundaries.
-- [ ] V2-008 Validate the practice modes and screen flow with a low-fidelity interactive prototype.
+- [x] V2-008 Validate the practice modes and screen flow with a low-fidelity interactive prototype.
 
 Exit criteria:
 
@@ -453,6 +453,7 @@ The release suite must include typical, edge, and adversarial cases:
 | 2026-09-05 | Keep the live interview distraction-free and move technical detail to review | Accepted | Realistic practice requires attention on the conversation rather than a dashboard |
 | 2026-09-05 | Support focused practice and mock interview modes | Accepted | Candidates need both realistic rehearsal and a short improvement loop |
 | 2026-09-05 | V2-006: React/TypeScript + Vite, same-origin FastAPI, generated HTTP types and versioned realtime events | Accepted | See [web-stack decision](decisions/V2-006-web-stack.md); preserves Python ownership and keeps one production server |
+| 2026-09-05 | V2-008: dependency-free static prototype with synthetic inputs and simulated device/provider states | Accepted | Validates flow before M2; no candidate capture, uploads, backend integration, persistence, or stack change |
 | 2026-09-05 | V2-007: one Fly.io Machine/worker and private volume, browser-only public composition, snapshots disabled before candidate data | Accepted | See [hosting decision](decisions/V2-007-public-hosting.md); bounded demo concurrency, explicit 24-hour retention, owner isolation and spend admission; no deployment performed |
 
 ## Current status
@@ -474,7 +475,12 @@ The release suite must include typical, edge, and adversarial cases:
 - V2-006 completed: React/TypeScript + Vite with the existing FastAPI service and generated
   contracts. V2-007 completed: a single Fly.io browser service with private storage, explicit owner
   access, retention/deletion, and spend limits. These are decisions, not implemented capabilities.
-- Next independent M0 work: V2-008 low-fidelity interactive prototype and flow/recovery validation.
+- V2-008 completed: synthetic interactive prototype covers both modes, readiness/consent, live
+  controls, evidence, retry, export/delete, and six recovery scenarios. All 27 Chromium checks pass;
+  `make check` passes with 103 runtime/fixture tests and 88.92% coverage. See
+  `docs/validation/V2-008-practice-prototype.md`. No real capture or candidate usability study.
+- Current work: improve V2-004 offline preparation and baseline reproducibility. Live collection
+  remains blocked by the authorized meeting, isolated audio route, and enforced attributable budget.
   V2-004 must still complete before M0 closes and the M1 engine refactor starts.
 - Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
   transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
@@ -493,6 +499,7 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | V2-005 | `0f0bdac`; `docs/v2-module-map.md`; AST inventory of all 19 modules and source trace of service, runner, ports, adapters, persistence, API, and consent/finalization paths | Source audit only; extraction awaits baseline and M1 replay coverage |
 | 2026-09-05 | V2-006 | [Web-stack decision](decisions/V2-006-web-stack.md); evaluated existing FastAPI ownership, browser audio, generated contracts, UI state, and testing against official React/Vite/OpenAPI and browser documentation | Scaffold, contract generation, and browser verification remain M2 work |
 | 2026-09-05 | V2-007 | [Hosting decision](decisions/V2-007-public-hosting.md); documented single-machine topology, data flow, ownership, retention, snapshots, spend admission, failure recovery and alternatives using current platform docs; local links and source inventory checked; `make check` passes with 103 tests and 88.92% coverage | No cloud resources provisioned; cost and production controls require M5 validation |
+| 2026-09-05 | V2-008 | `prototypes/practice/`; 27 local Chromium checks; in-app visual walkthrough of start, setup, readiness, and live views; `make check`: 103 tests, 88.92% coverage, Ruff, format, strict Mypy; separate browser CI job added | Synthetic flow only; no live capture, provider behavior, durable storage, candidate study, or hosted CI result |
 | 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 
 ## Plan change log
@@ -504,3 +511,5 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | 2026-09-05 | Approved V2-001 and completed V2-002/V2-003; recorded baseline behavior gaps and live measurement limits |
 | 2026-09-05 | Recorded V2-004 preflight blockers and completed the V2-005 module coupling audit |
 | 2026-09-05 | Accepted V2-006 web stack and V2-007 hosting/data boundaries; queued V2-008 while retaining the V2-004 blocker |
+
+| 2026-09-05 | Completed V2-008 interactive flow validation; continued V2-004 offline preparation without changing V1 runtime |

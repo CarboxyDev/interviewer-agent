@@ -1,4 +1,4 @@
-.PHONY: bootstrap check test lint format serve doctor
+.PHONY: bootstrap check test lint format serve doctor prototype prototype-test
 
 bootstrap:
 	uv sync --all-groups
@@ -24,3 +24,10 @@ serve:
 doctor:
 	uv run voice-interviewer doctor
 
+
+# V2-008: isolated flow study; no runtime or provider integration.
+prototype:
+	uv run python prototypes/practice/server.py
+
+prototype-test:
+	uv run python -m pytest -c tests/prototype/pytest.ini tests/prototype

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Practice room · Interactive prototype</title>
+    <link rel="stylesheet" href="practice.css" />
+    <script src="practice.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#workspace">Skip to practice</a>
+    <header>
+      <a href="./" aria-label="Practice room home"
+        >practice room<span aria-hidden="true">.</span></a
+      ><span>V2 / Flow study</span>
+    </header>
+    <aside class="notice">
+      Interactive prototype · Fictional content only. No microphone, uploads, AI
+      calls, or saved sessions. Reloading clears this demo.
+    </aside>
+    <main id="workspace" tabindex="-1"></main>
+    <footer>
+      <span>A private space to speak, reflect, and try again.</span>
+      <details id="lab">
+        <summary>Prototype scenarios</summary>
+        <p>
+          Simulate recovery paths. These controls are for this flow study only.
+        </p>
+        <div id="scenarios"></div>
+      </details>
+    </footer>
+    <dialog id="confirmation" aria-labelledby="dialog-title"></dialog>
+  </body>
+</html>
