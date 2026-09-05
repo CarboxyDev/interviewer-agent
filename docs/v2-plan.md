@@ -1,8 +1,8 @@
 # Version 2 Plan: Candidate Interview Practice Studio
 
-Status: In progress, product contract approved  
-Current milestone: M0, product contract and benchmark baseline  
-Current task: V2-003, define the benchmark protocol  
+Status: In progress, product contract approved\
+Current milestone: M0, product contract and benchmark baseline\
+Current task: V2-004, run and record the V1 baseline (next)\
 Last updated: 2026-09-05
 
 ## Public plan decision
@@ -288,7 +288,7 @@ Goal: agree on the V2 outcome and create a reproducible baseline before restruct
 
 - [x] V2-001 Confirm this product contract, scope, non-goals, and release measures.
 - [x] V2-002 Create synthetic resume, role, transcript, and audio fixtures safe for the public repo.
-- [ ] V2-003 Define the benchmark environment, dataset version, metric definitions, and run format.
+- [x] V2-003 Define the benchmark environment, dataset version, metric definitions, and run format.
 - [ ] V2-004 Run and record the V1 conversation, latency, reliability, and cost baseline.
 - [ ] V2-005 Document the current module dependency map and identify Meet-specific engine coupling.
 - [ ] V2-006 Decide the web stack and record the choice in the Decision log.
@@ -455,12 +455,20 @@ The release suite must include typical, edge, and adversarial cases:
 
 ## Current status
 
-- V1 repository checks pass with 92 tests and 88.92% measured coverage.
+- Current repository checks pass with 103 tests and 88.92% measured coverage; the unchanged V1
+  baseline had 92 tests, with 11 fixture checks added in V2-002.
 - V1 has successful live Google Meet rehearsal evidence and retained local artifacts.
 - Historical metrics show a material response-latency gap, but M0 must establish a fixed V2 baseline.
 - V2-001 is approved by the instruction to start implementing this plan autonomously.
 - V2-002 completed: pinned fictional resume, role, reference utterances, and synthesized audio.
-- Current work: V2-003 benchmark environment, metric definitions, and run format.
+- V2-003 completed: `benchmarks/README.md` defines the environment, metric boundaries, fixed probe
+  matrix, failure accounting, and versioned `benchmarks/run-template.json`.
+- Next: V2-004 live baseline preflight, including isolated synthetic candidate audio, authenticated
+  Meet access, effective model configuration, and bounded, attributable provider usage. These
+  prerequisites have not been verified in this work session.
+- Baseline findings: V1 active-silence timeout becomes `FAILED / INTERNAL_ERROR` without finalized
+  transcript/metrics; the deterministic repeat guard misses the polite fixture wording. These are
+  source/offline findings to capture in V2-004 and cover in V2-103/V2-210, not live measurements.
 - M0 remains open; no new live baseline or V2 product behavior is claimed.
 
 ## Evidence log
@@ -470,8 +478,9 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | Date | Task | Evidence | Remaining limitation |
 | --- | --- | --- | --- |
 | 2026-09-05 | V2-001 | `42a625a`; user authorized implementation of the current plan; scope, non-goals, UX contract, milestone order, and release targets accepted | Release targets remain unmeasured goals |
-| 2026-09-05 | V2-002 | `benchmarks/fixtures/v1/manifest.json`; 11 focused fixture checks pass, covering hashes, V1 document extraction, transcript clip bounds, PCM format, nonempty speech, silence, and V1 control-intent baseline | One synthetic voice and role; V1 repeat guard misses the polite fixture wording; no live STT accuracy or conversation-quality claim |
-| 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval below |
+| 2026-09-05 | V2-002 | `d8aff0d`; `benchmarks/fixtures/v1/manifest.json`; 11 focused fixture checks pass, covering hashes, V1 document extraction, transcript clip bounds, PCM format, nonempty speech, silence, and V1 control-intent baseline | One synthetic voice and role; V1 repeat guard misses the polite fixture wording; no live STT accuracy or conversation-quality claim |
+| 2026-09-05 | V2-003 | `benchmarks/README.md` and `benchmarks/run-template.json`; template checked against dataset SHA-256, 20-attempt probe matrix, and V1 source settings; `make check` passes with 103 tests, 88.92% coverage, Ruff, format, and strict Mypy | Protocol only; live latency, cost, interruption, and Meet reliability remain unmeasured; M0 stays open |
+| 2026-09-05 | Planning baseline | `docs/v2-plan.md` and repository instructions created | Superseded by V2-001 approval |
 
 ## Plan change log
 
@@ -479,3 +488,4 @@ Add one row when a task is completed. Do not add private artifact paths or meeti
 | --- | --- |
 | 2026-09-05 | Created the V2 candidate practice product plan and checklist |
 | 2026-09-05 | Simplified plan metadata and added the candidate practice UX contract |
+| 2026-09-05 | Approved V2-001 and completed V2-002/V2-003; recorded baseline behavior gaps and live measurement limits |
